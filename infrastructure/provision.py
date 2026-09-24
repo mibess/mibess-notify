@@ -66,6 +66,7 @@ for attempt in range(60):
     if subprocess.run(['docker','exec','mibess-notify-rabbitmq','rabbitmq-diagnostics','-q','ping'],capture_output=True).returncode==0: break
     time.sleep(2)
 else: raise RuntimeError('Notify broker did not become healthy')
+run(['docker','exec','mibess-notify-rabbitmq','rabbitmqctl','await_startup','--timeout','120'])
 users=run(['docker','exec','mibess-notify-rabbitmq','rabbitmqctl','list_users','--silent'])
 vhosts=run(['docker','exec','mibess-notify-rabbitmq','rabbitmqctl','list_vhosts','--silent'])
 for environment in ['hml','prd']:
@@ -84,10 +85,12 @@ account=aws('sts','get-caller-identity')['Account']
 provider=f'arn:aws:iam::{account}:oidc-provider/token.actions.githubusercontent.com'
 providers=aws('iam','list-open-id-connect-providers')['OpenIDConnectProviderList']
 if not any(p['Arn']==provider for p in providers):aws('iam','create-open-id-connect-provider','--url','https://token.actions.githubusercontent.com','--client-id-list','sts.amazonaws.com')
-trust={'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'Federated':provider},'Action':'sts:AssumeRoleWithWebIdentity','Condition':{'StringEquals':{'token.actions.githubusercontent.com:aud':'sts.amazonaws.com','token.actions.githubusercontent.com:sub':['repo:mibess/mibess-notify:ref:refs/heads/main','repo:mibess/mibess-notify:ref:refs/heads/develop']}}}]}
+trust={'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'Federated':provider},'Action':'sts:AssumeRoleWithWebIdentity','Condition':{'StringEquals':{'token.actions.githubusercontent.com:aud':'sts.amazonaws.com','token.actions.githubusercontent.com:sub':['repo:mibess@11463771/mibess-notify@1384348076:ref:refs/heads/main','repo:mibess@11463771/mibess-notify@1384348076:ref:refs/heads/develop']}}}]}
 role='mibess-notify-github-deploy'
 if subprocess.run(['aws','iam','get-role','--role-name',role],capture_output=True).returncode:
     aws('iam','create-role','--role-name',role,'--assume-role-policy-document',json.dumps(trust))
+else:
+    aws('iam','update-assume-role-policy','--role-name',role,'--policy-document',json.dumps(trust))
 policy={'Version':'2012-10-17','Statement':[{'Effect':'Allow','Action':['ecr:GetAuthorizationToken'],'Resource':'*'},{'Effect':'Allow','Action':['ecr:BatchCheckLayerAvailability','ecr:CompleteLayerUpload','ecr:UploadLayerPart','ecr:InitiateLayerUpload','ecr:PutImage','ecr:BatchGetImage','ecr:GetDownloadUrlForLayer','ecr:DescribeImages'],'Resource':[f'arn:aws:ecr:us-east-1:{account}:repository/mibess-notify-backend',f'arn:aws:ecr:us-east-1:{account}:repository/mibess-notify-frontend']}]}
 aws('iam','put-role-policy','--role-name',role,'--policy-name','NotifyImagesOnly','--policy-document',json.dumps(policy))
 
