@@ -28,3 +28,12 @@ A conexão Baileys usa WhatsApp Web; não equivale ao cadastro Cloud API/coexist
 ## Validação
 
 Testes HTTP simulados verificam payload, autenticação e tratamento de respostas ambíguas. Teste integrado verifica rejeição sem token, token incorreto e instância divergente, deduplicação e ausência de apikey persistida. Um envio real depende de autorização específica do destinatário.
+
+## Ativação verificada — 24/09/2026
+
+- HML e PRD: versão `700c68adc8ec73dc918bf639d7e1f15879b1c6c4`.
+- GitHub Actions: [HML 35950082539](https://github.com/mibess/mibess-notify/actions/runs/35950082539) e [PRD 35950440470](https://github.com/mibess/mibess-notify/actions/runs/35950440470), ambos com sucesso.
+- 17 testes backend e 3 frontend passaram. Homologação confirmou credenciais não expostas/preservadas e rejeição de webhook sem token, sem mensagens reais.
+- Canal PRD `MIBESS_NOTIFY` ativo na Evolution; conexão do número correto confirmada; webhook autenticado configurado exclusivamente nessa instância.
+- Único envio autorizado: notificação `4ea9dae2-53e9-43b4-9b7c-fe1b0a77b41f`, provider ID `3EB06338976FA77BF9BE1D`. Status observado SENT, 1 tentativa, 0 retries. Não houve confirmação DELIVERED/READ até a conclusão; o destino do teste foi o próprio número remetente.
+- API key do teste revogada; aplicação, regra e template de aceitação desativados. Histórico preservado. Canal de produção permanece habilitado; regras e templates de negócio previamente desativados não foram ativados por este teste.
