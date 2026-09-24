@@ -160,6 +160,330 @@ class IntegrationTest {
       .doesNotContain("apikey", "must-not-persist");
   }
 
+  @Autowired
+  com.mibess.notify.notification.DeliveryWorker deliveryWorker;
+
+  private com.fasterxml.jackson.databind.node.ObjectNode manualInput() {
+    return json
+      .object()
+      .put("requestId", UUID.randomUUID().toString())
+      .put("contactId", contact.toString())
+      .put("channelConnectionId", channel.toString())
+      .put("text", "Olá! Mensagem manual de teste.");
+  }
+
+  private com.fasterxml.jackson.databind.node.ObjectNode reviewManual(
+    com.fasterxml.jackson.databind.node.ObjectNode input
+  ) throws Exception {
+    var response = mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isOk())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    input.put("previewHash", json.read(response).path("previewHash").asText());
+    return input;
+  }
+
+  private UUID sendManual(com.fasterxml.jackson.databind.node.ObjectNode input)
+    throws Exception {
+    var response = mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isAccepted())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    return UUID.fromString(json.read(response).path("notificationId").asText());
+  }
+
+  @Test
+  void manualSendUsesSameQueueAndDeduplicatesWithoutCreatingRoutingResources()
+    throws Exception {
+    var input = manualInput();
+    long before = db
+      .sql("SELECT count(*) FROM notifications WHERE source='MANUAL'")
+      .query(Long.class)
+      .single();
+    reviewManual(input);
+    assertThat(
+      db
+        .sql("SELECT count(*) FROM notifications WHERE source='MANUAL'")
+        .query(Long.class)
+        .single()
+    ).isEqualTo(before);
+    UUID id = sendManual(input);
+    var repeated = mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isOk())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    assertThat(json.read(repeated).path("notificationId").asText()).isEqualTo(
+      id.toString()
+    );
+    assertThat(json.read(repeated).path("duplicate").asBoolean()).isTrue();
+    await()
+      .atMost(Duration.ofSeconds(15))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql("SELECT status FROM notifications WHERE id=:id")
+            .param("id", id)
+            .query(String.class)
+            .single()
+        ).isEqualTo("SENT")
+      );
+    var row = db
+      .sql("SELECT * FROM notifications WHERE id=:id")
+      .param("id", id)
+      .query()
+      .singleRow();
+    assertThat(row.get("source")).isEqualTo("MANUAL");
+    assertThat(row.get("event_id")).isNull();
+    assertThat(row.get("rule_id")).isNull();
+    assertThat(row.get("template_id")).isNull();
+    assertThat(row.get("attempt_count")).isEqualTo(1);
+    input.put("text", "Different message");
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isConflict());
+  }
+
+  @Test
+  void manualSendRequiresRoleCsrfConsentAndFreshPreview() throws Exception {
+    var input = manualInput();
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("VIEWER"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isForbidden());
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isForbidden());
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isConflict());
+    reviewManual(input);
+    input.put("text", "Changed after preview");
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isConflict());
+    db.sql(
+      "UPDATE contacts SET spec=spec || '{\"whatsappOptIn\":false}'::jsonb WHERE id=:id"
+    )
+      .param("id", contact)
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void manualSendRejectsSuppressionForeignWorkspaceAndMetaFreeText()
+    throws Exception {
+    var input = manualInput();
+    input.put("contactId", UUID.randomUUID().toString());
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isNotFound());
+    input.put("contactId", contact.toString());
+    String phone = store
+      .get(Kind.CONTACTS, Bootstrap.WORKSPACE, contact)
+      .spec()
+      .path("phone")
+      .asText();
+    db.sql(
+      "INSERT INTO suppressions(id,workspace_id,address,reason) VALUES(:id,:w,:p,'Manual test') ON CONFLICT DO NOTHING"
+    )
+      .param("id", UUID.randomUUID())
+      .param("w", Bootstrap.WORKSPACE)
+      .param("p", phone)
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isBadRequest());
+    db.sql("DELETE FROM suppressions WHERE workspace_id=:w AND address=:p")
+      .param("w", Bootstrap.WORKSPACE)
+      .param("p", phone)
+      .update();
+    var crypto = new Crypto("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+    var spec = json
+      .object()
+      .put("provider", "WHATSAPP_META")
+      .put("phoneNumberId", "12345")
+      .put(
+        "encryptedCredentials",
+        crypto.encrypt(
+          "{\"accessToken\":\"mock\"}",
+          Bootstrap.WORKSPACE + ":" + channel
+        )
+      );
+    store.save(
+      Kind.CHANNELS,
+      Bootstrap.WORKSPACE,
+      channel,
+      "META_" + channel.toString().substring(0, 8),
+      "Meta",
+      true,
+      spec
+    );
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void manualWorkerRechecksConsentAndManualRetryKeepsOriginalContent()
+    throws Exception {
+    var input = reviewManual(manualInput());
+    UUID id = sendManual(input);
+    db.sql(
+      "UPDATE notifications SET status='FAILED',error_code='FAKE_TRANSIENT' WHERE id=:id"
+    )
+      .param("id", id)
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/" + id + "/retry")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk());
+    assertThat(
+      json
+        .read(
+          db
+            .sql("SELECT command::text FROM notifications WHERE id=:id")
+            .param("id", id)
+            .query(String.class)
+            .single()
+        )
+        .path("text")
+        .asText()
+    ).isEqualTo(input.path("text").asText());
+    db.sql("UPDATE contacts SET enabled=false WHERE id=:id")
+      .param("id", contact)
+      .update();
+    db.sql("UPDATE notifications SET status='QUEUED' WHERE id=:id")
+      .param("id", id)
+      .update();
+    deliveryWorker.deliver(id.toString());
+    assertThat(
+      db
+        .sql("SELECT status FROM notifications WHERE id=:id")
+        .param("id", id)
+        .query(String.class)
+        .single()
+    ).isEqualTo("CANCELLED");
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void manualTemplateRendersParametersAndCancelsIfTemplateChanges()
+    throws Exception {
+    var input = manualInput();
+    input.remove("text");
+    input.put("templateId", template.toString());
+    input.putObject("variables").put("orderNumber", "$123");
+    reviewManual(input);
+    UUID id = sendManual(input);
+    var command = json.read(
+      db
+        .sql("SELECT command::text FROM notifications WHERE id=:id")
+        .param("id", id)
+        .query(String.class)
+        .single()
+    );
+    assertThat(command.path("text").asText()).isEqualTo("Pedido $123");
+    assertThat(command.path("parameters").path(0).asText()).isEqualTo("$123");
+    db.sql(
+      "UPDATE templates SET spec=spec || '{\"body\":\"Alterado\"}'::jsonb WHERE id=:id"
+    )
+      .param("id", template)
+      .update();
+    db.sql("UPDATE notifications SET status='QUEUED' WHERE id=:id")
+      .param("id", id)
+      .update();
+    deliveryWorker.deliver(id.toString());
+    assertThat(
+      db
+        .sql("SELECT status FROM notifications WHERE id=:id")
+        .param("id", id)
+        .query(String.class)
+        .single()
+    ).isEqualTo("CANCELLED");
+  }
+
   @BeforeEach
   void fixture() {
     String suffix = UUID.randomUUID().toString().substring(0, 8);

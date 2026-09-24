@@ -1,5 +1,6 @@
 import { Component, input } from "@angular/core";
 const icons: Record<string, string> = {
+  send: "M22 2 9 15 M22 2l-7 20-6-7-7-6 20-7z",
   dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   apps: "M4 5h16v14H4z M8 2v6 M16 2v6 M4 10h16",
   events: "M13 2 4 14h7l-1 8 10-12h-7z",

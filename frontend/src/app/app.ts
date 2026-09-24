@@ -15,6 +15,7 @@ interface Field {
   hint?: string;
 }
 export const LABELS: Record<string, string> = {
+  MANUAL_CREATED: "Envio manual criado",
   PENDING: "Pendente",
   QUEUED: "Na fila",
   PROCESSING: "Processando",
@@ -237,6 +238,7 @@ export class AppComponent {
     { id: "applications", name: "Aplicações", icon: "apps" },
     { id: "events", name: "Eventos", icon: "events" },
     { id: "notifications", name: "Notificações", icon: "notifications" },
+    { id: "manual", name: "Enviar notificação", icon: "send" },
     { id: "rules", name: "Regras de envio", icon: "rules" },
     { id: "contacts", name: "Contatos", icon: "contacts" },
     { id: "groups", name: "Grupos", icon: "groups" },
@@ -262,6 +264,8 @@ export class AppComponent {
   descriptions: Record<string, string> = {
     dashboard: "Tudo o que acontece. Cada mensagem que chega.",
     applications: "Conecte seus sistemas por eventos de negócio.",
+    manual:
+      "Escolha um contato, escreva sua mensagem e revise antes de enviar.",
     events: "A origem de cada notificação, em um só lugar.",
     notifications: "Acompanhe cada envio, do evento à leitura.",
     rules: "Decida quem recebe, por qual canal e em qual momento.",
@@ -320,6 +324,16 @@ export class AppComponent {
     try {
       await this.api.post("auth/logout");
       this.user.set(null);
+      this.manualPending = null;
+      this.manualPreview.set(null);
+      this.manualResult.set(null);
+      this.manualForm = {
+        contactId: "",
+        channelConnectionId: "",
+        templateId: "",
+        text: "",
+        variables: {},
+      };
       this.items.set([]);
       this.resources.set({});
       this.detail.set(null);
@@ -375,6 +389,13 @@ export class AppComponent {
         const n = await this.api.get("admin/notifications?" + this.query());
         this.items.set(n.items);
         this.total.set(n.total);
+      } else if (this.page() === "manual") {
+        this.restoreManual();
+        if (
+          !this.manualForm.channelConnectionId &&
+          this.manualChannels.length === 1
+        )
+          this.manualForm.channelConnectionId = this.manualChannels[0].id;
       } else if (this.isResource()) {
         this.items.set(this.resources()[this.page()] || []);
         this.total.set(this.items().length);
@@ -557,6 +578,161 @@ export class AppComponent {
       return n;
     }
     return value;
+  }
+  manualForm = {
+    contactId: "",
+    channelConnectionId: "",
+    templateId: "",
+    text: "",
+    variables: {} as Record<string, string>,
+  };
+  manualMode = "text";
+  manualPreview = signal<any>(null);
+  manualResult = signal<any>(null);
+  manualPending: any = null;
+  manualRequestId = crypto.randomUUID();
+  get manualChannels() {
+    return (this.resources()["channels"] || []).filter(
+      (c) => c.enabled && c.spec["credentialsConfigured"],
+    );
+  }
+  get manualChannel() {
+    return this.resources()["channels"]?.find(
+      (c) => c.id === this.manualForm.channelConnectionId,
+    );
+  }
+  get manualContact() {
+    return this.resources()["contacts"]?.find(
+      (c) => c.id === this.manualForm.contactId,
+    );
+  }
+  get manualUsesTemplate() {
+    return (
+      this.manualMode === "template" ||
+      this.manualChannel?.spec["provider"] === "WHATSAPP_META"
+    );
+  }
+  get manualTemplates() {
+    return (this.resources()["templates"] || []).filter(
+      (t) =>
+        t.enabled &&
+        t.spec["status"] === "APPROVED" &&
+        t.spec["channelConnectionId"] === this.manualForm.channelConnectionId,
+    );
+  }
+  get manualTemplate() {
+    return this.manualTemplates.find(
+      (t) => t.id === this.manualForm.templateId,
+    );
+  }
+  get manualVariables(): string[] {
+    return this.manualTemplate?.spec["variables"] || [];
+  }
+  get manualStorageKey() {
+    return "notify-manual-pending:" + this.user()?.email;
+  }
+  restoreManual() {
+    if (this.manualPending) return;
+    try {
+      const value = sessionStorage.getItem(this.manualStorageKey);
+      if (value) {
+        this.manualPending = JSON.parse(value);
+        this.manualPreview.set(this.manualPending.preview);
+      }
+    } catch {
+      /* Server idempotency remains authoritative. */
+    }
+  }
+  manualChanged(resetTemplate = false) {
+    if (this.manualPending) return;
+    this.manualPreview.set(null);
+    this.manualResult.set(null);
+    this.manualRequestId = crypto.randomUUID();
+    if (resetTemplate) {
+      this.manualForm.templateId = "";
+      this.manualForm.variables = {};
+    }
+  }
+  async reviewManual() {
+    if (this.saving() || this.manualPending) return;
+    this.saving.set(true);
+    this.error.set("");
+    try {
+      const input = {
+        requestId: this.manualRequestId,
+        contactId: this.manualForm.contactId,
+        channelConnectionId: this.manualForm.channelConnectionId,
+        templateId: this.manualUsesTemplate
+          ? this.manualForm.templateId || null
+          : null,
+        text: this.manualUsesTemplate ? null : this.manualForm.text,
+        variables: this.manualUsesTemplate ? this.manualForm.variables : {},
+      };
+      const preview = await this.api.post(
+        "admin/notifications/manual/preview",
+        input,
+      );
+      this.manualPreview.set({ ...preview, input });
+    } catch (e) {
+      this.error.set(errorText(e));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  async sendManual() {
+    if (this.saving() || !this.manualPreview()) return;
+    this.saving.set(true);
+    this.error.set("");
+    try {
+      if (!this.manualPending) {
+        const preview = this.manualPreview();
+        this.manualPending = {
+          preview,
+          input: { ...preview.input, previewHash: preview.previewHash },
+        };
+      }
+      sessionStorage.setItem(
+        this.manualStorageKey,
+        JSON.stringify(this.manualPending),
+      );
+      const result = await this.api.post(
+        "admin/notifications/manual",
+        this.manualPending.input,
+      );
+      sessionStorage.removeItem(this.manualStorageKey);
+      this.manualPending = null;
+      this.manualPreview.set(null);
+      this.manualResult.set(result);
+    } catch (e: any) {
+      if ([400, 403, 404, 409].includes(e?.status)) {
+        sessionStorage.removeItem(this.manualStorageKey);
+        this.manualPending = null;
+        this.manualPreview.set(null);
+      }
+      this.error.set(errorText(e));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  newManual() {
+    if (this.manualPending) return;
+    this.manualResult.set(null);
+    this.manualPreview.set(null);
+    this.manualForm.text = "";
+    this.manualForm.variables = {};
+    this.manualRequestId = crypto.randomUUID();
+  }
+  async showManualResult() {
+    if (!this.manualResult()) return;
+    try {
+      this.detail.set(
+        await this.api.get(
+          "admin/notifications/" + this.manualResult().notificationId,
+        ),
+      );
+    } catch (e) {
+      this.error.set(errorText(e));
+    }
   }
   async showDetail(row: any) {
     if (this.isResource()) {

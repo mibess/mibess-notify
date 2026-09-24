@@ -89,7 +89,7 @@
       <div class="nav-divider"></div>
       }@if(n.id==='webhooks'){
       <div class="nav-divider"></div>
-      }<button
+      }@if(n.id!=='manual'||canOperate()){<button
         [class.active]="page()===n.id"
         (click)="navigate(n.id)"
         [attr.aria-current]="page()===n.id?'page':null"
@@ -98,7 +98,7 @@
         >@if(n.id==='notifications'&&metrics().FAILED){<b class="nav-count"
           >{{metrics().FAILED}}</b
         >}</button
-      >}
+      >}}
     </nav>
     <div class="sidebar-bottom">
       <div class="connection-note">
@@ -162,7 +162,12 @@
             <app-icon name="refresh" [class.spin]="loading()" /><span
               >Atualizar</span
             ></button
-          >@if(isResource()&&isAdmin()){<button
+          >@if((page()==='notifications'||page()==='contacts')&&canOperate()){<button
+            class="btn primary"
+            (click)="navigate('manual')"
+          >
+            <app-icon name="send" />Enviar notificação</button
+          >}@if(isResource()&&isAdmin()){<button
             class="btn primary"
             (click)="openEditor()"
           >
@@ -183,7 +188,8 @@
           <app-icon name="close" />
         </button>
       </div>
-      } @if(page()==='dashboard'||!isResource()&&page()!=='settings'){
+      }
+      @if(page()==='dashboard'||!isResource()&&page()!=='settings'&&page()!=='manual'){
       <div class="filters">
         <div class="filter-label">
           <span class="filter-lines">☷</span>Filtrar por
@@ -229,7 +235,9 @@
           <option value="all">Todo o período</option>
         </select>
       </div>
-      } @if(page()==='dashboard'){
+      } @if(page()==='manual'){
+      <ng-container *ngTemplateOutlet="manualPage"></ng-container>
+      } @else if(page()==='dashboard'){
       <section class="metrics-grid" aria-label="Indicadores">
         <article class="metric-card">
           <div class="metric-top">
@@ -673,7 +681,7 @@
   <div class="empty-state compact">
     <div class="empty-icon"><app-icon name="notifications" /></div>
     <h3>Nenhuma notificação por aqui, ainda</h3>
-    <p>Configure uma regra e publique seu primeiro evento.</p>
+    <p>Envie uma mensagem manual ou configure seus envios automáticos.</p>
     <button class="text-button" (click)="navigate('rules')">
       Configurar regras<app-icon name="arrow" />
     </button>
@@ -700,8 +708,13 @@
               <span class="resource-avatar"
                 ><app-icon name="notifications" /></span
               ><span
-                ><strong>{{name('applications',row.application_id)}}</strong
-                ><small>{{name('templates',row.template_id)}}</small></span
+                ><strong
+                  >{{row.source==='MANUAL'?'Envio
+                  manual':name('applications',row.application_id)}}</strong
+                ><small
+                  >{{row.source==='MANUAL'&&!row.template_id?'Mensagem
+                  livre':name('templates',row.template_id)}}</small
+                ></span
               >
             </button>
           </td>
@@ -991,7 +1004,10 @@
       <dl>
         <div>
           <dt>Aplicação</dt>
-          <dd>{{name('applications',detail().notification.application_id)}}</dd>
+          <dd>
+            {{detail().notification.source==='MANUAL'?'Envio
+            manual':name('applications',detail().notification.application_id)}}
+          </dd>
         </div>
         <div>
           <dt>Identidade remetente</dt>
@@ -1001,7 +1017,10 @@
         </div>
         <div>
           <dt>Template</dt>
-          <dd>{{name('templates',detail().notification.template_id)}}</dd>
+          <dd>
+            {{detail().notification.source==='MANUAL'&&!detail().notification.template_id?'Mensagem
+            livre':name('templates',detail().notification.template_id)}}
+          </dd>
         </div>
         <div>
           <dt>Tentativas</dt>
@@ -1012,6 +1031,11 @@
       <div class="error">{{detail().notification.error_code}}</div>
       }
     </div>
+    @if(detail().notification.source==='MANUAL'){
+    <p class="subtle">Enviada por {{detail().notification.created_by}}</p>
+    <h3 class="section-title">Mensagem</h3>
+    <pre class="message-preview">{{detail().message}}</pre>
+    }
     <h3 class="section-title">Histórico de entrega</h3>
     <ol class="timeline">
       @for(item of detail().timeline;track item.id){
@@ -1121,3 +1145,227 @@
 } @if(toast()){
 <div class="toast" role="status"><app-icon name="check" />{{toast()}}</div>
 }
+
+<ng-template #manualPage>
+  @if(!canOperate()) {
+  <section class="panel manual-card">
+    <h2>Acesso de operador necessário</h2>
+    <p>Envios manuais estão disponíveis para administradores e operadores.</p>
+  </section>
+  } @else if(manualResult()) {
+  <section class="panel manual-card manual-success" role="status">
+    <div class="empty-icon"><app-icon name="check" /></div>
+    <h2>Notificação registrada</h2>
+    <p>
+      A mensagem entrou no fluxo de envio. Acompanhe o status e as confirmações
+      no histórico.
+    </p>
+    <div class="manual-actions">
+      <button class="btn primary" (click)="showManualResult()">
+        Acompanhar envio<app-icon name="arrow" /></button
+      ><button class="btn" (click)="newManual()">Nova mensagem</button>
+    </div>
+  </section>
+  } @else {
+  <div class="manual-layout">
+    <section class="panel manual-card">
+      <div class="manual-heading">
+        <span class="step-number">1</span>
+        <div>
+          <h2>Prepare sua mensagem</h2>
+          <p>Um contato por envio, com registro no histórico.</p>
+        </div>
+      </div>
+      @if(!resources()['contacts']?.length){
+      <div class="manual-notice">
+        Cadastre um contato para começar.
+        <button class="text-button" (click)="navigate('contacts')">
+          Ir para contatos
+        </button>
+      </div>
+      } @if(!loading()&&!manualChannels.length){
+      <div class="manual-notice">
+        Nenhum remetente ativo e configurado.
+        <button class="text-button" (click)="navigate('channels')">
+          Ver canais
+        </button>
+      </div>
+      }
+      <form (ngSubmit)="reviewManual()">
+        <fieldset
+          [disabled]="saving()||!!manualPreview()||!!manualPending"
+          class="manual-fields"
+        >
+          <label for="manual-contact"
+            >Contato<select
+              id="manual-contact"
+              name="contact"
+              required
+              [(ngModel)]="manualForm.contactId"
+              (ngModelChange)="manualChanged()"
+            >
+              <option value="">Selecione o destinatário</option>
+              @for(c of resources()['contacts']||[];track c.id){
+              <option [value]="c.id" [disabled]="!c.enabled">
+                {{c.name}} · {{c.spec.phone}}{{!c.enabled?' (inativo)':''}}
+              </option>
+              }
+            </select></label
+          >
+          @if(manualContact){<small class="manual-consent"
+            >{{manualContact.spec.whatsappOptIn&&!manualContact.spec.whatsappOptOutAt?'O
+            consentimento será validado antes do envio.':'Este contato precisa
+            de consentimento. Atualize o cadastro em Contatos.'}}</small
+          >}
+          <label for="manual-channel"
+            >Remetente<select
+              id="manual-channel"
+              name="channel"
+              required
+              [(ngModel)]="manualForm.channelConnectionId"
+              (ngModelChange)="manualChanged(true)"
+            >
+              <option value="">Selecione o canal de envio</option>
+              @for(c of manualChannels;track c.id){
+              <option [value]="c.id">{{c.name}}</option>
+              }
+            </select></label
+          >
+          @if(manualChannel?.spec?.['provider']==='WHATSAPP_META'){
+          <p class="manual-notice">
+            Este remetente usa a Meta Cloud API. Selecione um template aprovado.
+          </p>
+          } @else {
+          <label for="manual-mode"
+            >Mensagem<select
+              id="manual-mode"
+              name="mode"
+              [(ngModel)]="manualMode"
+              (ngModelChange)="manualChanged(true)"
+            >
+              <option value="text">Escrever mensagem</option>
+              <option value="template">Usar um template</option>
+            </select></label
+          >
+          } @if(manualUsesTemplate){
+          <label for="manual-template"
+            >Template<select
+              id="manual-template"
+              name="template"
+              required
+              [(ngModel)]="manualForm.templateId"
+              (ngModelChange)="manualForm.variables={};manualChanged()"
+            >
+              <option value="">Selecione uma mensagem aprovada</option>
+              @for(t of manualTemplates;track t.id){
+              <option [value]="t.id">{{t.name}}</option>
+              }
+            </select></label
+          >
+          @if(manualChannel&&!manualTemplates.length){
+          <p class="manual-notice">
+            Não há templates ativos e aprovados para este remetente.
+          </p>
+          } @if(manualTemplate){
+          <pre class="message-preview template-body">
+{{manualTemplate.spec.body}}</pre>
+          } @for(variable of manualVariables;track variable){<label
+            [for]="'manual-var-'+variable"
+            >{{variable}}<input
+              [id]="'manual-var-'+variable"
+              [name]="'var-'+variable"
+              required
+              maxlength="4096"
+              [(ngModel)]="manualForm.variables[variable]"
+              (ngModelChange)="manualChanged()" /></label
+          >} } @else {
+          <label for="manual-text"
+            >Texto da mensagem<textarea
+              id="manual-text"
+              name="message"
+              required
+              maxlength="4096"
+              rows="7"
+              placeholder="Escreva a mensagem que o contato vai receber..."
+              [(ngModel)]="manualForm.text"
+              (ngModelChange)="manualChanged()"
+            ></textarea>
+          </label>
+          <small class="manual-count"
+            >{{manualForm.text.length}} / 4096 caracteres</small
+          >
+          }
+          <button
+            class="btn primary"
+            type="submit"
+            [disabled]="loading()||!manualChannels.length"
+          >
+            {{saving()?'Validando…':'Revisar mensagem'}}<app-icon
+              name="arrow"
+            />
+          </button>
+        </fieldset>
+      </form>
+    </section>
+    <section class="panel manual-card manual-review" aria-live="polite">
+      <div class="manual-heading">
+        <span class="step-number">2</span>
+        <div>
+          <h2>Revise e confirme</h2>
+          <p>Confira o destinatário e o texto antes de enviar.</p>
+        </div>
+      </div>
+      @if(manualPreview()){
+      <dl class="manual-summary">
+        <div>
+          <dt>Para</dt>
+          <dd>
+            {{manualPreview().recipientName}}<small
+              >{{manualPreview().recipientAddress}}</small
+            >
+          </dd>
+        </div>
+        <div>
+          <dt>Remetente</dt>
+          <dd>{{manualPreview().channelName}}</dd>
+        </div>
+      </dl>
+      <pre class="message-preview">{{manualPreview().text}}</pre>
+      @if(manualPending&&!saving()){
+      <p class="manual-notice">
+        A confirmação do servidor ainda está pendente. Verifique novamente; esta
+        ação reutiliza o mesmo envio e evita duplicatas.
+      </p>
+      }
+      <div class="manual-actions">
+        @if(!manualPending){<button
+          class="btn"
+          [disabled]="saving()"
+          (click)="manualPreview.set(null)"
+        >
+          Editar</button
+        >}
+        <button
+          class="btn primary"
+          [disabled]="saving()"
+          (click)="sendManual()"
+        >
+          <app-icon
+            name="send"
+          />{{saving()?'Registrando…':manualPending?'Verificar envio':'Confirmar
+          e enviar'}}
+        </button>
+      </div>
+      } @else {
+      <div class="manual-preview-empty">
+        <app-icon name="channels" />
+        <p>
+          A prévia aparecerá aqui depois que você preencher a mensagem e clicar
+          em <strong>Revisar mensagem</strong>.
+        </p>
+      </div>
+      }
+    </section>
+  </div>
+  }
+</ng-template>

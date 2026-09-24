@@ -114,16 +114,51 @@ public class DeliveryWorker {
         w,
         (UUID) n.get("channel_connection_id")
       );
-      var template = store.get(Kind.TEMPLATES, w, (UUID) n.get("template_id"));
       JsonNode optIn = cmd.path("consent");
-      boolean enabled =
-        channel.enabled() &&
-        template.enabled() &&
-        template.spec().path("status").asText().equals("APPROVED") &&
-        store
-          .get(Kind.APPLICATIONS, w, (UUID) n.get("application_id"))
-          .enabled() &&
-        store.get(Kind.RULES, w, (UUID) n.get("rule_id")).enabled();
+      boolean manual = "MANUAL".equals(n.get("source"));
+      boolean enabled = channel.enabled();
+      if (manual) {
+        enabled &=
+          cmd
+            .path("provider")
+            .asText()
+            .equals(channel.spec().path("provider").asText()) &&
+          cmd
+            .path("channelFingerprint")
+            .asText()
+            .equals(Crypto.hash(json.write(channel.spec())));
+        if (n.get("template_id") != null) {
+          var template = store.get(
+            Kind.TEMPLATES,
+            w,
+            (UUID) n.get("template_id")
+          );
+          enabled &=
+            template.enabled() &&
+            template.spec().path("status").asText().equals("APPROVED") &&
+            cmd
+              .path("templateFingerprint")
+              .asText()
+              .equals(Crypto.hash(json.write(template.spec())));
+        } else enabled &= !channel
+          .spec()
+          .path("provider")
+          .asText()
+          .equals("WHATSAPP_META");
+      } else {
+        var template = store.get(
+          Kind.TEMPLATES,
+          w,
+          (UUID) n.get("template_id")
+        );
+        enabled &=
+          template.enabled() &&
+          template.spec().path("status").asText().equals("APPROVED") &&
+          store
+            .get(Kind.APPLICATIONS, w, (UUID) n.get("application_id"))
+            .enabled() &&
+          store.get(Kind.RULES, w, (UUID) n.get("rule_id")).enabled();
+      }
       if (n.get("contact_id") != null) {
         var contact = store.get(Kind.CONTACTS, w, (UUID) n.get("contact_id"));
         optIn = contact.spec();

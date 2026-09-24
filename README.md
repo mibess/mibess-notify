@@ -96,3 +96,9 @@ Documentação: [arquitetura](ARCHITECTURE.md), [infraestrutura](docs/INFRASTRUC
 | Webhook DEFERRED | Aguardando vinculação por providerMessageId; reconciliado até 24h |
 | Health DOWN | Conexão ao banco, vhost/credencial RabbitMQ e logs do container Notify |
 | Master key inválida | 32 bytes codificados em Base64; não trocar sem recriptografar credenciais |
+
+## Envio manual pelo painel
+
+Abra **Enviar notificação** no menu (ou o botão em Contatos/Notificações). Escolha um contato ativo com consentimento, o remetente e escreva a mensagem. Clique **Revisar mensagem**, confira o telefone completo e confirme em **Confirmar e enviar**. Pela Evolution é possível escrever texto livre; pela Meta é obrigatório um template aprovado. O envio aparece em Notificações como **Envio manual**, com autor, mensagem, tentativas e timeline. Somente ADMIN e OPERATOR podem enviar.
+
+Não é preciso criar aplicação, regra ou chave de API. A confirmação gera uma única solicitação idempotente, processada pela fila existente. Se a conexão cair, use **Verificar envio** para recuperar o resultado sem duplicar a mensagem.

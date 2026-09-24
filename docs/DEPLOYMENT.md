@@ -82,3 +82,7 @@ Backups locais: `/opt/mibess-notify/backups/<ambiente>/*.dump`, modo restrito. A
 - Confirmar que containers compartilhados mantêm os mesmos IDs e uptime.
 
 Consulte [META.md](META.md) para o que depende da conta Meta. Publicar o painel não comprova a entrega de mensagens WhatsApp.
+
+## Migração V3 — envios manuais
+
+A V3 adiciona origem/autor/idempotência às notificações e permite referências nulas somente nos envios manuais, com CHECK por origem. É aditiva e preserva históricos existentes. Depois de aceitar notificações manuais, não reverta para imagens anteriores à V3 com mensagens manuais pendentes: esses workers antigos exigem aplicação/regra/template. Em uma recuperação, interrompa os workers, reconcilie os manuais em processamento e prefira corrigir mantendo a versão compatível com V3. Não reverta a migration nem apague histórico para fazer rollback.

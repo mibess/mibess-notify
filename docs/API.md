@@ -45,3 +45,11 @@ GET/POST `/admin/suppressions`; POST recebe `{address,reason}` e exige ADMIN/OPE
 Somente em HML/dev com provider fake habilitado: POST `/admin/notifications/{id}/simulate-delivery`, ADMIN, notificação SENT por FAKE. Gera recibo assíncrono pelo mesmo processamento de webhooks. A aplicação recusa fake provider em PRD.
 
 OpenAPI/Swagger: habilite `OPENAPI_ENABLED=true` em desenvolvimento; acesso autenticado. A API principal contém anotação de segurança e descrição de idempotência. O contrato de configuração dos módulos está nos validadores e formulários versionados.
+
+## Envios manuais
+
+POST `/admin/notifications/manual/preview` e POST `/admin/notifications/manual` exigem sessão ADMIN/OPERATOR e CSRF. Corpo: `{requestId,contactId,channelConnectionId,templateId?,text?,variables?,previewHash?}`. `requestId` é UUID criado pelo cliente para uma única intenção de envio. Mensagem livre exige text e ausência de templateId; Meta exige template aprovado do canal e variáveis por nome.
+
+Preview resolve os cadastros no workspace, valida consentimento/suppression/canal, renderiza o conteúdo e retorna `previewHash`, destinatário, telefone, remetente e texto. A confirmação envia o mesmo corpo com previewHash; alterações invalidam a prévia (409). Retorna 202 `{notificationId,status,duplicate:false}` ou 200 com o mesmo ID para repetição idêntica. Mesmo requestId com outro conteúdo retorna 409, inclusive em chamadas concorrentes.
+
+A notificação manual tem source MANUAL, autor e contato, sem aplicação/evento/regra fictícios. Texto e parâmetros são uma fotografia da confirmação; retries preservam o conteúdo. O worker revalida consentimento, endereço, canal e template antes da chamada externa e cancela se a configuração mudou. Não dispara regras de negócio. A fila, outbox, tentativas, reconciliação de webhooks e suppression são compartilhadas com os envios por evento.

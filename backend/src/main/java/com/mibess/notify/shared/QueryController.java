@@ -116,6 +116,8 @@ public class QueryController {
     result.remove("payload_hash");
     result.remove("idempotency_key");
     result.remove("command");
+    result.remove("manual_request_hash");
+    result.remove("manual_request_id");
     if (result.containsKey("payload")) result.put(
       "payload",
       json.read(result.get("payload").toString())
@@ -137,6 +139,8 @@ public class QueryController {
     return Map.of(
       "notification",
       safe(n),
+      "message",
+      json.read(n.get("command").toString()).path("text").asText(),
       "timeline",
       db
         .sql(
@@ -165,7 +169,7 @@ public class QueryController {
   ) {
     var n = db
       .sql(
-        "SELECT status,error_code,template_id,event_id,command FROM notifications WHERE id=:id AND workspace_id=:w FOR UPDATE"
+        "SELECT status,error_code,template_id,event_id,command,source FROM notifications WHERE id=:id AND workspace_id=:w FOR UPDATE"
       )
       .param("id", id)
       .param("w", access.id())
@@ -183,45 +187,49 @@ public class QueryController {
       HttpStatus.CONFLICT,
       "Resultado incerto. Confirme a reconciliação no provider antes de reenviar."
     );
-    var spec = json.read(
-      db
-        .sql(
-          "SELECT spec::text FROM templates WHERE id=:id AND workspace_id=:w AND enabled"
-        )
-        .param("id", n.get("template_id"))
-        .param("w", access.id())
-        .query(String.class)
-        .optional()
-        .orElseThrow(() -> new IllegalArgumentException("Template desativado"))
-    );
-    if (
-      !spec.path("status").asText().equals("APPROVED")
-    ) throw new IllegalArgumentException("Template precisa estar aprovado");
-    var payload = json.read(
-      db
-        .sql(
-          "SELECT payload::text FROM events WHERE id=:id AND workspace_id=:w"
-        )
-        .param("id", n.get("event_id"))
-        .param("w", access.id())
-        .query(String.class)
-        .single()
-    );
     var command = (com.fasterxml.jackson.databind.node.ObjectNode) json.read(
       n.get("command").toString()
     );
-    command.set(
-      "parameters",
-      json.tree(
-        com.mibess.notify.template.TemplateRenderer.parameters(spec, payload)
-      )
-    );
-    command.put(
-      "text",
-      com.mibess.notify.template.TemplateRenderer.render(spec, payload)
-    );
-    command.put("templateName", spec.path("providerTemplateName").asText());
-    command.put("language", spec.path("language").asText());
+    if (!"MANUAL".equals(n.get("source"))) {
+      var spec = json.read(
+        db
+          .sql(
+            "SELECT spec::text FROM templates WHERE id=:id AND workspace_id=:w AND enabled"
+          )
+          .param("id", n.get("template_id"))
+          .param("w", access.id())
+          .query(String.class)
+          .optional()
+          .orElseThrow(() ->
+            new IllegalArgumentException("Template desativado")
+          )
+      );
+      if (
+        !spec.path("status").asText().equals("APPROVED")
+      ) throw new IllegalArgumentException("Template precisa estar aprovado");
+      var payload = json.read(
+        db
+          .sql(
+            "SELECT payload::text FROM events WHERE id=:id AND workspace_id=:w"
+          )
+          .param("id", n.get("event_id"))
+          .param("w", access.id())
+          .query(String.class)
+          .single()
+      );
+      command.set(
+        "parameters",
+        json.tree(
+          com.mibess.notify.template.TemplateRenderer.parameters(spec, payload)
+        )
+      );
+      command.put(
+        "text",
+        com.mibess.notify.template.TemplateRenderer.render(spec, payload)
+      );
+      command.put("templateName", spec.path("providerTemplateName").asText());
+      command.put("language", spec.path("language").asText());
+    }
     db.sql(
       "UPDATE notifications SET status='PENDING',available_at=now(),retry_count=0,error_code=NULL,command=CAST(:command AS jsonb) WHERE id=:id"
     )
