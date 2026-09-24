@@ -27,3 +27,9 @@
 | PRD | postgres-prd | mibess_notify | mibess_notify | /mibess-notify-prd |
 
 Somente frontend/proxy publica HTTP. Backend, broker e conexões de bancos usam redes Docker; nenhuma nova porta PostgreSQL pública. Limites de memória/CPU e rotação de logs nos novos containers. Secrets fora do Git, no host com modo 0600 e nos GitHub Actions Secrets.
+
+## Provisionamento executado — 24/09/2026
+
+Após aprovação explícita, foram criados os dois bancos e usuários listados, um broker Notify com vhosts/permissões separados, redes notify-broker/notify-edge, Caddy com TLS, dois repositórios ECR e role OIDC restrita. Os dois subdomínios apontam para a VPS. Nenhum PostgreSQL foi criado ou reiniciado. Os IDs e tempos de execução de todos os containers preexistentes permaneceram iguais.
+
+O GitHub informou `use_immutable_subject=true` para este repositório. A confiança AWS usa os IDs imutáveis retornados pela API, conforme a [documentação oficial](https://docs.github.com/en/actions/reference/security/oidc), sem ampliar branches ou permissões ECR.

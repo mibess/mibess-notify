@@ -2,7 +2,15 @@
 
 ## Estado
 
-O inventário foi executado na VPS. A execução inicial de `infrastructure/provision.py` foi bloqueada pela revisão automática por agregar alterações de banco, AWS e rede com root. A configuração dos GitHub Actions Secrets/variables e da chave dedicada também foi rejeitada por criar acesso privilegiado de deploy. As duas aprovações explícitas estão pendentes. **Não houve provisionamento, configuração de secrets ou deploy HML/PRD.** Atualizar esta seção apenas após evidência real.
+Provisionamento e acesso de deploy aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). HML e PRD publicados e saudáveis no commit `e7a14e57eb51d9cee937983975ea26b531a4c137`, usando as mesmas imagens imutáveis ECR. A release anterior e os backups próprios estão registrados na VPS.
+
+- [Pipeline HML aprovada](https://github.com/mibess/mibess-notify/actions/runs/35945938671).
+- [Pipeline PRD aprovada](https://github.com/mibess/mibess-notify/actions/runs/35946472811).
+- GitHub Actions Secrets/variables configurados; a chave dedicada recusa comandos fora de `deploy hml|prd <SHA>`.
+- HML: aceite completo com provider fake e confirmação DELIVERED. PRD: login/CSRF e evento controlado processado como NO_MATCH, sem mensagem externa.
+- Os 12 containers preexistentes mantiveram seus IDs. Nenhum PostgreSQL foi criado ou reiniciado.
+
+A entrega Meta real ainda não foi validada. Consulte [VALIDATION.md](VALIDATION.md) para evidências e limites.
 
 ## Topologia
 
@@ -26,7 +34,7 @@ Nenhum Compose HML/PRD cria PostgreSQL. O broker Notify é único, com usuários
 2. Copiar `infrastructure/` para `/opt/mibess-notify/infrastructure/`.
 3. Executar o provisionamento aprovado: `python3 /opt/mibess-notify/infrastructure/provision.py`.
 4. Script preserva secrets existentes, gera novos valores aleatórios com modo 0600, cria somente bancos/usuários próprios e não reinicia os PostgreSQL.
-5. Instala Compose em `/opt/mibess-notify/bin/docker-compose`, sem alterar o Compose legado. Cria repositórios ECR com tags imutáveis e role OIDC limitada às branches main/develop deste repositório.
+5. Instala Compose em `/opt/mibess-notify/bin/docker-compose`, sem alterar o Compose legado. Cria repositórios ECR com tags imutáveis e role OIDC limitada às branches main/develop deste repositório, usando o subject imutável `repo:mibess@11463771/mibess-notify@1384348076:ref:refs/heads/<branch>`.
 6. Adicionar chave de deploy dedicada à VPS, com forced command `infrastructure/ssh-entrypoint.sh`, sem forwarding/PTY. Não usar chave AWS estática ou credenciais administrativas de PostgreSQL na aplicação.
 
 ## GitHub Actions
@@ -37,7 +45,7 @@ Variables do repositório:
 |---|---|
 | AWS_ROLE_ARN | Role OIDC `mibess-notify-github-deploy`, limitada ao ECR do Notify |
 | ECR_REGISTRY | Host do registry ECR existente, sem protocolo |
-| HOSTINGER_HOST | Host SSH da VPS |
+| HOSTINGER_HOST | IPv4 verificado da VPS; evita falha de conectividade IPv6 no runner |
 | HOSTINGER_USER | Usuário de deploy |
 | DEPLOY_ENABLED | `true` somente após provisionamento e acesso de deploy aprovados/configurados; ausente mantém CI ativo e deploy bloqueado |
 

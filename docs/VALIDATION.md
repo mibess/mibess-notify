@@ -28,4 +28,20 @@
 
 ## Ainda não validado
 
-Provisionamento e deploy HML/PRD estão bloqueados por aprovação automática; DNS/TLS público, imagens em ECR, health na VPS, rollback real e entrega Meta não foram executados. Os canais reais permanecem sem credenciais verificadas. O projeto não deve ser considerado operacional em produção até concluir esses itens.
+Entrega real Meta e exercício de rollback sob falha induzida ainda não foram executados. Os canais reais permanecem sem credenciais/números/templates verificados. A publicação da plataforma não comprova o aceite de entrega real pelo WhatsApp.
+
+## Homologação pública — 24/09/2026
+
+- [Pipeline HML aprovada](https://github.com/mibess/mibess-notify/actions/runs/35944757394), commit `75db89e0d8727248833840538e458df391c3bdf7`. Imagens imutáveis ECR e deploy por SSH restrito.
+- `https://notify-hml.mibess.com.br`: TLS validado, frontend HTTP 200 e health UP. Login/sessão/CSRF confirmados pelo cliente HTTP de aceite e tela pública carregada no navegador.
+- Aceite completo pelo domínio: ORDER_PAID → grupo → fake SENT → webhook DELIVERED; idempotência; condição OUT_FOR_DELIVERY → EVENT_RECIPIENT; suppression. Notificação entregue `f6fd9951-6ca6-483a-9d70-1d009fe61f8d`. Chave de teste revogada e configurações desativadas.
+- CSP, HSTS, X-Frame-Options e nosniff presentes; API administrativa sem sessão retorna 401 e `/actuator/env` retorna 404.
+
+## Release final HML e PRD — 24/09/2026 (UTC)
+
+- Mesmo commit de aplicação `e7a14e57eb51d9cee937983975ea26b531a4c137` nos dois ambientes: [HML](https://github.com/mibess/mibess-notify/actions/runs/35945938671) e [PRD](https://github.com/mibess/mibess-notify/actions/runs/35946472811), ambos aprovados.
+- A inspeção visual detectou incompatibilidade entre o carregador de CSS crítico do Angular e a CSP. Corrigido com `inlineCritical=false`, mantendo a política de segurança. O build agora rejeita HTML com eventos inline; telas públicas verificadas visualmente nos dois domínios.
+- PRD: login/sessão/CSRF, chave de API, evento persistido, outbox, RabbitMQ e roteamento NO_MATCH aprovados pelo cliente HTTP de aceite. Sem destinatário e sem mensagem externa. Chaves de teste revogadas, aplicações de teste desativadas e histórico preservado.
+- Health UP em ambos os domínios; migrations V1/V2 aplicadas com sucesso. Filas de eventos, entregas e webhooks com consumidores ativos; DLQ vazia. PRD confirmou `NOTIFY_ENV=prd` e `FAKE_PROVIDER_ENABLED=false`.
+- Backups anteriores à atualização: HML 63.984 bytes e PRD 58.770 bytes. Release anterior `75db89e0d8727248833840538e458df391c3bdf7` registrada para rollback de imagem. Restauração sob falha induzida não foi exercitada.
+- Os IDs dos 12 containers preexistentes permaneceram iguais. Verificação de logs dos backends sem WARN/ERROR no intervalo consultado. Nenhum valor secreto publicado.

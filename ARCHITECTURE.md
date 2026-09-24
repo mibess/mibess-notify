@@ -24,4 +24,4 @@ auth, workspace, application, event, routing, notification, channel, template, c
 
 ## Infraestrutura
 
-Os bancos lógicos e usuários próprios serão criados em `postgres-hml` e `postgres-prd`, sem reiniciar ou recriar os containers. Rede existente `shared-db-network`. AWS ECR existente para imagens com tag de commit. Veja [inventário](docs/INFRASTRUCTURE.md).
+Os bancos lógicos e usuários próprios estão em `postgres-hml` e `postgres-prd`, sem reiniciar ou recriar os containers. Rede existente `shared-db-network`. AWS ECR existente para imagens com tag de commit. Veja [inventário](docs/INFRASTRUCTURE.md).
