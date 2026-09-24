@@ -1,0 +1,35 @@
+name: mibess-notify-shared
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    container_name: mibess-notify-rabbitmq
+    hostname: mibess-notify-rabbitmq
+    restart: unless-stopped
+    env_file: /opt/mibess-notify/secrets/broker.env
+    volumes: ["notify-rabbit-data:/var/lib/rabbitmq"]
+    networks: [notify-broker]
+    mem_limit: 512m
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  proxy:
+    image: caddy:2.10-alpine
+    container_name: mibess-notify-proxy
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "notify-caddy-data:/data", "notify-caddy-config:/config"]
+    networks: [notify-edge]
+    mem_limit: 128m
+    cpus: 0.5
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+networks:
+  notify-broker: {external: true}
+  notify-edge: {external: true}
+volumes:
+  notify-rabbit-data:
+  notify-caddy-data:
+  notify-caddy-config:

@@ -1,0 +1,60 @@
+name: Build images and deploy
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: notify-${{ inputs.target }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and publish immutable images
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for service in backend frontend; do
+            repository="mibess-notify-$service"
+            if ! aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$REVISION" >/dev/null 2>&1; then
+              docker build --tag "$REGISTRY/$repository:$REVISION" "$service"
+              docker push "$REGISTRY/$repository:$REVISION"
+            fi
+          done
+      - name: Deploy and verify Hostinger
+        env:
+          DEPLOY_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.HOSTINGER_HOST }}
+          DEPLOY_USER: ${{ vars.HOSTINGER_USER }}
+          TARGET: ${{ inputs.target }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/notify-deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/notify-deploy "$DEPLOY_USER@$DEPLOY_HOST" "deploy $TARGET $REVISION"
+      - name: Verify public HTTPS
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          domain=notify-hml.mibess.com.br
+          if [ "$TARGET" = prd ]; then domain=notify.mibess.com.br; fi
+          curl --fail --retry 5 --retry-delay 5 "https://$domain/actuator/health" | grep -q '"status":"UP"'
+          curl --fail --silent "https://$domain/" | grep -q app-root

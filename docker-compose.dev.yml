@@ -1,0 +1,25 @@
+name: mibess-notify-dev
+services:
+  postgres:
+    image: postgres:15.5
+    environment:
+      POSTGRES_DB: mibess_notify
+      POSTGRES_USER: notify
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["notify-dev-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notify -d mibess_notify"]
+      interval: 5s
+      retries: 10
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: notify
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: /mibess-notify
+    ports: ["127.0.0.1:55672:5672", "127.0.0.1:15673:15672"]
+    volumes: ["notify-dev-rabbit:/var/lib/rabbitmq"]
+volumes:
+  notify-dev-db:
+  notify-dev-rabbit:

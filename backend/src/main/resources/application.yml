@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: mibess-notify
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mibess_notify}
+    username: ${DB_USERNAME:notify}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  session:
+    jdbc:
+      initialize-schema: never
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:notify}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/mibess-notify}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: true
+        prefetch: 4
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        secure: ${COOKIE_SECURE:true}
+        same-site: strict
+  tomcat:
+    max-http-form-post-size: 256KB
+    max-swallow-size: 256KB
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+springdoc:
+  api-docs:
+    enabled: ${OPENAPI_ENABLED:false}
+  swagger-ui:
+    enabled: ${OPENAPI_ENABLED:false}
+notify:
+  encryption-key: ${MASTER_ENCRYPTION_KEY}
+  admin-email: ${ADMIN_EMAIL:admin@mibess.com.br}
+  admin-password: ${ADMIN_PASSWORD:}
+  environment: ${NOTIFY_ENV:dev}
+  fake-provider: ${FAKE_PROVIDER_ENABLED:false}
+  graph-version: ${META_GRAPH_VERSION:v26.0}
+  rate-limit: ${EVENTS_PER_MINUTE:120}
+  retry-delays: ${RETRY_DELAYS_SECONDS:60,300,900,3600}
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler: ERROR

@@ -1,0 +1,37 @@
+name: mibess-notify-prd
+services:
+  backend:
+    image: ${REGISTRY}/mibess-notify-backend:${IMAGE_TAG:?immutable commit required}
+    container_name: mibess-notify-backend-prd
+    restart: unless-stopped
+    env_file: /opt/mibess-notify/secrets/prd.env
+    environment:
+      NOTIFY_ENV: prd
+      DB_HOST: postgres-prd
+      DB_NAME: mibess_notify
+      DB_USERNAME: mibess_notify
+      RABBITMQ_HOST: mibess-notify-rabbitmq
+      RABBITMQ_VHOST: /mibess-notify-prd
+      RABBITMQ_USER: mibess_notify_prd
+      FAKE_PROVIDER_ENABLED: "false"
+    networks: [app, shared-db-network, notify-broker]
+    mem_limit: 1024m
+    cpus: 2
+    security_opt: ["no-new-privileges:true"]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+  frontend:
+    image: ${REGISTRY}/mibess-notify-frontend:${IMAGE_TAG:?immutable commit required}
+    container_name: mibess-notify-frontend-prd
+    restart: unless-stopped
+    depends_on: [backend]
+    networks: [app, notify-edge]
+    ports: ["127.0.0.1:8390:8080"]
+    mem_limit: 128m
+    cpus: 0.5
+    security_opt: ["no-new-privileges:true"]
+    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+networks:
+  app:
+  shared-db-network: {external: true}
+  notify-broker: {external: true}
+  notify-edge: {external: true}

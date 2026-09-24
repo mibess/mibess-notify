@@ -1,0 +1,37 @@
+CREATE TABLE workspaces (id uuid PRIMARY KEY, name varchar(120) NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE users (id uuid PRIMARY KEY, email varchar(200) NOT NULL UNIQUE, password_hash varchar(100) NOT NULL, enabled boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE workspace_memberships (user_id uuid NOT NULL REFERENCES users, workspace_id uuid NOT NULL REFERENCES workspaces, role varchar(20) NOT NULL CHECK (role IN ('ADMIN','OPERATOR','VIEWER')), PRIMARY KEY(user_id,workspace_id));
+
+CREATE TABLE applications (id uuid PRIMARY KEY, workspace_id uuid NOT NULL REFERENCES workspaces, code varchar(80) NOT NULL, name varchar(150) NOT NULL, enabled boolean NOT NULL DEFAULT true, spec jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(workspace_id,code), UNIQUE(workspace_id,id));
+CREATE TABLE contacts (LIKE applications INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+ALTER TABLE contacts ADD FOREIGN KEY(workspace_id) REFERENCES workspaces;
+CREATE TABLE contact_groups (LIKE applications INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+ALTER TABLE contact_groups ADD FOREIGN KEY(workspace_id) REFERENCES workspaces;
+CREATE TABLE channel_connections (LIKE applications INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+ALTER TABLE channel_connections ADD FOREIGN KEY(workspace_id) REFERENCES workspaces;
+CREATE TABLE templates (LIKE applications INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+ALTER TABLE templates ADD FOREIGN KEY(workspace_id) REFERENCES workspaces;
+CREATE TABLE routing_rules (LIKE applications INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES);
+ALTER TABLE routing_rules ADD FOREIGN KEY(workspace_id) REFERENCES workspaces;
+
+CREATE TABLE api_keys (id uuid PRIMARY KEY, workspace_id uuid NOT NULL, application_id uuid NOT NULL, key_hash char(64) NOT NULL UNIQUE, prefix varchar(20) NOT NULL, status varchar(12) NOT NULL DEFAULT 'ACTIVE', created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz, last_used_at timestamptz, FOREIGN KEY(workspace_id,application_id) REFERENCES applications(workspace_id,id));
+CREATE TABLE events (id uuid PRIMARY KEY, workspace_id uuid NOT NULL, application_id uuid NOT NULL, type varchar(100) NOT NULL, correlation_id varchar(150) NOT NULL, idempotency_key varchar(200) NOT NULL, payload_hash char(64) NOT NULL, payload jsonb NOT NULL, status varchar(30) NOT NULL DEFAULT 'ACCEPTED', error_code varchar(100), duplicate_count integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz, UNIQUE(application_id,idempotency_key), UNIQUE(workspace_id,id), FOREIGN KEY(workspace_id,application_id) REFERENCES applications(workspace_id,id));
+CREATE INDEX events_workspace_created ON events(workspace_id,created_at DESC);
+CREATE TABLE notifications (id uuid PRIMARY KEY, workspace_id uuid NOT NULL, application_id uuid NOT NULL, event_id uuid NOT NULL, rule_id uuid NOT NULL, channel_connection_id uuid NOT NULL, template_id uuid NOT NULL, contact_id uuid, channel varchar(30) NOT NULL, recipient_type varchar(30) NOT NULL, recipient_name varchar(200) NOT NULL, recipient_address varchar(254) NOT NULL, priority varchar(12) NOT NULL, status varchar(20) NOT NULL, command jsonb NOT NULL, provider_message_id varchar(255), attempt_count integer NOT NULL DEFAULT 0, retry_count integer NOT NULL DEFAULT 0, available_at timestamptz NOT NULL DEFAULT now(), locked_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), queued_at timestamptz, sent_at timestamptz, delivered_at timestamptz, read_at timestamptz, failed_at timestamptz, error_code varchar(100), UNIQUE(event_id,rule_id,recipient_address), UNIQUE(workspace_id,id), FOREIGN KEY(workspace_id,event_id) REFERENCES events(workspace_id,id), FOREIGN KEY(workspace_id,channel_connection_id) REFERENCES channel_connections(workspace_id,id), FOREIGN KEY(workspace_id,template_id) REFERENCES templates(workspace_id,id), FOREIGN KEY(workspace_id,rule_id) REFERENCES routing_rules(workspace_id,id));
+CREATE UNIQUE INDEX notifications_provider_id ON notifications(channel_connection_id,provider_message_id) WHERE provider_message_id IS NOT NULL;
+CREATE INDEX notifications_workspace_created ON notifications(workspace_id,created_at DESC);
+CREATE INDEX notifications_retry ON notifications(available_at) WHERE status='PENDING';
+CREATE TABLE delivery_attempts (id uuid PRIMARY KEY, notification_id uuid NOT NULL REFERENCES notifications, attempt_number integer NOT NULL, started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz, status varchar(30) NOT NULL, provider_response_code integer, provider_message_id varchar(255), error_code varchar(100), error_message varchar(300), next_retry_at timestamptz, UNIQUE(notification_id,attempt_number));
+CREATE TABLE notification_timeline (id bigserial PRIMARY KEY, notification_id uuid NOT NULL REFERENCES notifications, status varchar(40) NOT NULL, description varchar(300) NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE outbox (id uuid PRIMARY KEY, topic varchar(40) NOT NULL, aggregate_id uuid NOT NULL, priority integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), published_at timestamptz);
+CREATE INDEX outbox_pending ON outbox(created_at) WHERE published_at IS NULL;
+CREATE TABLE webhook_receipts (id uuid PRIMARY KEY, workspace_id uuid NOT NULL, channel_connection_id uuid NOT NULL, fingerprint char(64) NOT NULL UNIQUE, payload jsonb NOT NULL, status varchar(20) NOT NULL DEFAULT 'RECEIVED', received_at timestamptz NOT NULL DEFAULT now(), processed_at timestamptz, error_code varchar(100), FOREIGN KEY(workspace_id,channel_connection_id) REFERENCES channel_connections(workspace_id,id));
+CREATE TABLE inbound_messages (id uuid PRIMARY KEY, workspace_id uuid NOT NULL REFERENCES workspaces, channel_connection_id uuid NOT NULL REFERENCES channel_connections, provider_message_id varchar(255) NOT NULL UNIQUE, sender_id varchar(255), message_type varchar(30), received_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE suppressions (id uuid PRIMARY KEY, workspace_id uuid NOT NULL REFERENCES workspaces, address varchar(254) NOT NULL, channel varchar(30) NOT NULL DEFAULT 'WHATSAPP', reason varchar(200) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(workspace_id,address,channel));
+CREATE TABLE audit_logs (id bigserial PRIMARY KEY, workspace_id uuid NOT NULL REFERENCES workspaces, actor varchar(200) NOT NULL, action varchar(80) NOT NULL, resource_id uuid, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE rate_limits (subject varchar(200) NOT NULL, window_start bigint NOT NULL, count integer NOT NULL, PRIMARY KEY(subject,window_start));
+
+CREATE TABLE spring_session (primary_id char(36) NOT NULL PRIMARY KEY, session_id char(36) NOT NULL UNIQUE, creation_time bigint NOT NULL, last_access_time bigint NOT NULL, max_inactive_interval integer NOT NULL, expiry_time bigint NOT NULL, principal_name varchar(100));
+CREATE INDEX spring_session_expiry ON spring_session(expiry_time);
+CREATE INDEX spring_session_principal ON spring_session(principal_name);
+CREATE TABLE spring_session_attributes (session_primary_id char(36) NOT NULL REFERENCES spring_session(primary_id) ON DELETE CASCADE, attribute_name varchar(200) NOT NULL, attribute_bytes bytea NOT NULL, PRIMARY KEY(session_primary_id,attribute_name));

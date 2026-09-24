@@ -1,0 +1,13 @@
+{
+  email admin@mibess.com.br
+}
+notify.mibess.com.br {
+  encode zstd gzip
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy mibess-notify-frontend-prd:8080
+}
+notify-hml.mibess.com.br {
+  encode zstd gzip
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy mibess-notify-frontend-hml:8080
+}
