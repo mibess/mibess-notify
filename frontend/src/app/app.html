@@ -1,56 +1,1121 @@
 @if (booting()) {
-  <div class="boot"><div class="brand-symbol">m<span>·</span></div><span class="loader"></span><p>Conectando ao seu workspace…</p></div>
+<div class="boot">
+  <div class="brand-symbol">m<span>·</span></div>
+  <span class="loader"></span>
+  <p>Conectando ao seu workspace…</p>
+</div>
 } @else if (!user()) {
-  <main class="login-layout">
-    <section class="login-story"><a class="brand" href="/"><div class="brand-symbol">m<span>·</span></div><span>mibess<span class="brand-light">notify</span></span></a><div class="story-content"><span class="eyebrow light">CADA EVENTO IMPORTA</span><h1>A conexão entre<br>o que acontece<br>e quem precisa saber<span>.</span></h1><p>Seus sistemas, eventos e notificações.<br>Uma central. Todas as conexões.</p><div class="flow-visual"><span><app-icon name="apps"/>Aplicações</span><i></i><span class="flow-center"><app-icon name="events"/>Notify</span><i></i><span><app-icon name="channels"/>Pessoas</span></div></div><small>MIBESS ECOSYSTEM <span>EVENTS → CONNECTIONS</span></small></section>
-    <section class="login-form-wrap"><form class="login-form" (ngSubmit)="login()"><span class="eyebrow">SEU WORKSPACE, CONECTADO</span><h2>Bem-vindo de volta.</h2><p>Acesse sua central de eventos e notificações.</p>@if(error()){<div class="error" role="alert">{{error()}}</div>}<label>E-mail<input name="email" type="email" [(ngModel)]="email" autocomplete="username" placeholder="voce@mibess.com.br" required></label><label>Senha<input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" placeholder="Sua senha" required></label><button class="btn primary login-button" [disabled]="saving()">{{saving()?'Entrando…':'Entrar no workspace'}}<app-icon name="arrow"/></button><div class="login-secure"><app-icon name="shield"/>Acesso seguro à sua operação</div></form><small>Mibess Notify · Central de eventos e notificações</small></section>
-  </main>
+<main class="login-layout">
+  <section class="login-story">
+    <a class="brand" href="/"
+      ><div class="brand-symbol">m<span>·</span></div>
+      <span>mibess<span class="brand-light">notify</span></span></a
+    >
+    <div class="story-content">
+      <span class="eyebrow light">CADA EVENTO IMPORTA</span>
+      <h1>
+        A conexão entre<br />o que acontece<br />e quem precisa saber<span
+          >.</span
+        >
+      </h1>
+      <p>
+        Seus sistemas, eventos e notificações.<br />Uma central. Todas as
+        conexões.
+      </p>
+      <div class="flow-visual">
+        <span><app-icon name="apps" />Aplicações</span><i></i
+        ><span class="flow-center"><app-icon name="events" />Notify</span><i></i
+        ><span><app-icon name="channels" />Pessoas</span>
+      </div>
+    </div>
+    <small>MIBESS ECOSYSTEM <span>EVENTS → CONNECTIONS</span></small>
+  </section>
+  <section class="login-form-wrap">
+    <form class="login-form" (ngSubmit)="login()">
+      <span class="eyebrow">SEU WORKSPACE, CONECTADO</span>
+      <h2>Bem-vindo de volta.</h2>
+      <p>Acesse sua central de eventos e notificações.</p>
+      @if(error()){
+      <div class="error" role="alert">{{error()}}</div>
+      }<label
+        >E-mail<input
+          name="email"
+          type="email"
+          [(ngModel)]="email"
+          autocomplete="username"
+          placeholder="voce@mibess.com.br"
+          required /></label
+      ><label
+        >Senha<input
+          name="password"
+          type="password"
+          [(ngModel)]="password"
+          autocomplete="current-password"
+          placeholder="Sua senha"
+          required /></label
+      ><button class="btn primary login-button" [disabled]="saving()">
+        {{saving()?'Entrando…':'Entrar no workspace'}}<app-icon name="arrow" />
+      </button>
+      <div class="login-secure">
+        <app-icon name="shield" />Acesso seguro à sua operação
+      </div>
+    </form>
+    <small>Mibess Notify · Central de eventos e notificações</small>
+  </section>
+</main>
 } @else {
-  <div class="shell">
-    @if(mobile()){<button class="sidebar-overlay" aria-label="Fechar menu" (click)="mobile.set(false)"></button>}
-    <aside class="sidebar" [class.open]="mobile()"><a class="brand" href="#/dashboard" (click)="navigate('dashboard')"><div class="brand-symbol">m<span>·</span></div><span>mibess<span class="brand-light">notify</span></span></a><div class="workspace-switch"><div class="workspace-avatar">M</div><div><strong>{{user().workspace}}</strong><small>Workspace principal</small></div><span class="workspace-dot"></span></div><span class="nav-caption">WORKSPACE</span><nav aria-label="Menu principal">@for(n of nav;track n.id){@if(n.id==='contacts'){<div class="nav-divider"></div>}@if(n.id==='webhooks'){<div class="nav-divider"></div>}<button [class.active]="page()===n.id" (click)="navigate(n.id)" [attr.aria-current]="page()===n.id?'page':null"><app-icon [name]="n.icon"/><span>{{n.name}}</span>@if(n.id==='notifications'&&metrics().FAILED){<b class="nav-count">{{metrics().FAILED}}</b>}</button>}</nav><div class="sidebar-bottom"><div class="connection-note"><span class="pulse-dot"></span><span>Uma central. Mais conexões.</span></div><button class="profile" (click)="navigate('settings')"><div class="avatar">{{initials(user().email)}}</div><div><strong>{{user().email.split('@')[0]}}</strong><small>{{user().role==='ADMIN'?'Administrador':user().role==='OPERATOR'?'Operador':'Visualizador'}}</small></div><app-icon name="settings"/></button></div></aside>
-    <div class="main-area"><header class="topbar"><div class="breadcrumb"><button class="icon-button mobile-menu" aria-label="Abrir menu" (click)="mobile.set(true)"><app-icon name="menu"/></button><span>Mibess</span><span class="slash">/</span><strong>{{title()}}</strong></div><div class="top-actions"><span class="workspace-tag"><span class="pulse-dot"></span>Workspace conectado</span><button class="icon-button" title="Sair" aria-label="Sair da conta" (click)="logout()"><app-icon name="logout"/></button></div></header>
-    <main class="content"><div class="page-heading"><div><span class="eyebrow">CENTRAL DE EVENTOS E NOTIFICAÇÕES</span><h1>{{title()}}@if(page()==='dashboard'){<span class="heading-dot">.</span>}</h1><p>{{descriptions[page()]}}</p></div><div class="heading-actions"><button class="btn" aria-label="Atualizar" (click)="reload()" [disabled]="loading()"><app-icon name="refresh" [class.spin]="loading()"/><span>Atualizar</span></button>@if(isResource()&&isAdmin()){<button class="btn primary" (click)="openEditor()"><app-icon name="plus"/>{{page()==='applications'?'Nova aplicação':page()==='contacts'?'Novo contato':page()==='groups'?'Novo grupo':page()==='channels'?'Novo canal':page()==='templates'?'Novo template':'Nova regra'}}</button>}</div></div>
-    @if(error()){<div class="error" role="alert"><app-icon name="alert"/>{{error()}}<button class="icon-button" aria-label="Fechar erro" (click)="error.set('')"><app-icon name="close"/></button></div>}
-    @if(page()==='dashboard'||!isResource()&&page()!=='settings'){
-      <div class="filters"><div class="filter-label"><span class="filter-lines">☷</span>Filtrar por</div><select aria-label="Aplicação" [(ngModel)]="filterApp" (ngModelChange)="refreshFilters()"><option value="">Todas as aplicações</option>@for(a of resources()['applications'];track a.id){<option [value]="a.id">{{a.name}}</option>}</select>@if(page()!=='events'&&page()!=='audit'){<select aria-label="Canal" [(ngModel)]="filterChannel" (ngModelChange)="refreshFilters()"><option value="">Todos os canais</option>@for(c of resources()['channels'];track c.id){<option [value]="c.id">{{c.name}}</option>}</select>}@if(page()==='notifications'||page()==='events'){<select aria-label="Status" [(ngModel)]="filterStatus" (ngModelChange)="refreshFilters()"><option value="">Todos os status</option>@for(s of (page()==='notifications'?['PENDING','QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED']:['ACCEPTED','PROCESSED','NO_MATCH','FAILED']);track s){<option [value]="s">{{label(s)}}</option>}</select>}<select class="period" aria-label="Período" [(ngModel)]="period" (ngModelChange)="refreshFilters()"><option value="today">Hoje</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="all">Todo o período</option></select></div>
-    }
-    @if(page()==='dashboard'){
-      <section class="metrics-grid" aria-label="Indicadores"><article class="metric-card"><div class="metric-top"><span>Eventos recebidos</span><app-icon name="events"/></div><strong>{{metrics().events||0 | number}}</strong><small>O início de cada conexão</small><div class="mini-bars purple-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article><article class="metric-card"><div class="metric-top"><span>Notificações</span><app-icon name="notifications"/></div><strong>{{metrics().notifications||0 | number}}</strong><small>Geradas pelas suas regras</small></article><article class="metric-card"><div class="metric-top"><span>Entregues</span><app-icon name="check"/></div><strong>{{(metrics().DELIVERED||0)+(metrics().READ||0) | number}}</strong><small><span class="dot success-dot"></span>{{metrics().deliveryRate||0}}% dos envios aceitos</small></article><article class="metric-card"><div class="metric-top"><span>Precisam de atenção</span><app-icon name="alert"/></div><strong [class.red-text]="metrics().FAILED">{{metrics().FAILED||0 | number}}</strong><small>{{metrics().FAILED?'Verifique as tentativas de envio':'Nenhuma falha no período'}}</small></article></section>
-      <section class="dashboard-middle"><article class="panel activity-panel"><div class="panel-heading"><div><h2>Atividade de notificações</h2><p>Acompanhe o ritmo da sua operação</p></div><div class="legend"><span><i class="purple-bg"></i>Total</span><span><i class="green-bg"></i>Entregues</span></div></div>@if(bars().length){<div class="chart"><div class="chart-grid"></div>@for(day of bars();track day.day){<div class="chart-column"><div class="bar-pair"><div class="bar total-bar" [style.height.%]="barHeight(day.total)" [title]="day.total+' notificações'"></div><div class="bar delivered-bar" [style.height.%]="barHeight(day.delivered)" [title]="day.delivered+' entregues'"></div></div><small>{{day.day | date:'dd/MM'}}</small></div>}</div>}@else{<div class="chart-empty"><div class="empty-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><strong>Sua operação começa com um evento</strong><p>As notificações aparecerão aqui assim que suas aplicações publicarem eventos.</p></div>}</article><article class="panel delivery-panel"><div class="panel-heading"><div><h2>Cada etapa conta</h2><p>Do envio à leitura</p></div><app-icon name="arrow"/></div><div class="delivery-stages">@for(s of ['QUEUED','PROCESSING','SENT','DELIVERED','READ'];track s){<div><span><i class="dot" [class]="'dot stage-'+s"></i>{{label(s)}}</span><strong>{{metrics()[s]||0}}</strong></div>}</div><div class="delivery-foot"><app-icon name="shield"/><span>Entrega confirmada pelo provider</span></div></article></section>
-      <section class="panel"><div class="panel-heading"><div><h2>Últimas notificações</h2><p>Uma visão de cada conexão recente</p></div><button class="text-button" (click)="navigate('notifications')">Ver todas<app-icon name="arrow"/></button></div><ng-container *ngTemplateOutlet="notificationTable"></ng-container></section>
-      <section class="integration-banner"><div class="banner-icon"><app-icon name="events"/></div><div><h3>Seus sistemas falam eventos. O Notify cuida do resto.</h3><p>Conecte uma aplicação, defina as regras e acompanhe cada entrega.</p></div><button class="btn" (click)="navigate('applications')">Gerenciar aplicações<app-icon name="arrow"/></button></section>
-    } @else if(isResource()){
-      <section class="panel resource-panel"><div class="list-toolbar"><div class="search-input"><app-icon name="search"/><input aria-label="Buscar na lista" placeholder="Buscar por nome ou código…" [ngModel]="search()" (ngModelChange)="search.set($event)"></div><span class="count-label">{{filtered().length}} registros</span></div>
-      @if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container>}@else if(!filtered().length){<div class="empty-state"><div class="empty-icon"><app-icon [name]="page()"/></div><h3>{{search()?'Nenhum resultado encontrado':'Pronto para a primeira conexão'}}</h3><p>{{search()?'Tente buscar por outro nome ou código.':'Adicione um registro para começar a configurar sua operação.'}}</p>@if(isAdmin()&&!search()){<button class="btn primary" (click)="openEditor()"><app-icon name="plus"/>Adicionar {{title().toLowerCase()}}</button>}</div>}@else{
-      <div class="table-scroll"><table><thead><tr><th>Nome</th><th>{{page()==='rules'?'Evento':page()==='contacts'?'Contato':page()==='templates'?'Template Meta':page()==='groups'?'Membros':'Configuração'}}</th><th>Status</th><th>Atualização</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody>@for(row of filtered();track row.id){<tr><td><button class="table-name" (click)="openEditor(row)"><span class="resource-avatar" [class.green-avatar]="page()==='channels'"><app-icon [name]="page()==='channels'?'channels':page()==='contacts'?'contacts':page()==='rules'?'rules':'apps'"/></span><span><strong>{{row.name}}</strong><small>{{row.code}}</small></span></button></td><td>@switch(page()){@case('rules'){<span class="code-text">{{row.spec.eventType}}</span><small class="cell-sub">{{name('channels',row.spec.channelConnectionId)}}</small>}@case('contacts'){<span>{{mask(row.spec.phone)}}</span><small class="cell-sub">{{row.spec.whatsappOptIn?'Com consentimento':'Consentimento pendente'}}</small>}@case('groups'){<span>{{row.spec.members?.length||0}} contatos</span>}@case('templates'){<span class="code-text">{{row.spec.providerTemplateName}}</span><small class="cell-sub">{{row.spec.language}} · {{label(row.spec.status)}}</small>}@case('channels'){<span>WhatsApp · Meta Cloud API</span><small class="cell-sub">{{row.spec.credentialsConfigured?'Credenciais configuradas':'Aguardando configuração'}}</small>}@default{<span>{{row.spec.description||'Eventos de negócio'}}</span>}}</td><td><span class="chip" [class.success]="row.enabled" [class.muted]="!row.enabled"><i></i>{{row.enabled?'Ativo':'Desativado'}}</span></td><td class="subtle">{{row.updatedAt||row.createdAt|date:'dd MMM, HH:mm'}}</td><td><div class="row-actions">@if(page()==='applications'&&isAdmin()){<button class="icon-button" title="Gerenciar API keys" aria-label="Gerenciar API keys" (click)="manageKeys(row)"><app-icon name="key"/></button>}<button class="icon-button" title="Ver detalhes" aria-label="Ver detalhes" (click)="openEditor(row)"><app-icon name="chevron"/></button></div></td></tr>}</tbody></table></div>}
+<div class="shell">
+  @if(mobile()){<button
+    class="sidebar-overlay"
+    aria-label="Fechar menu"
+    (click)="mobile.set(false)"
+  ></button
+  >}
+  <aside class="sidebar" [class.open]="mobile()">
+    <a class="brand" href="#/dashboard" (click)="navigate('dashboard')"
+      ><div class="brand-symbol">m<span>·</span></div>
+      <span>mibess<span class="brand-light">notify</span></span></a
+    >
+    <div class="workspace-switch">
+      <div class="workspace-avatar">M</div>
+      <div>
+        <strong>{{user().workspace}}</strong><small>Workspace principal</small>
+      </div>
+      <span class="workspace-dot"></span>
+    </div>
+    <span class="nav-caption">WORKSPACE</span>
+    <nav aria-label="Menu principal">
+      @for(n of nav;track n.id){@if(n.id==='contacts'){
+      <div class="nav-divider"></div>
+      }@if(n.id==='webhooks'){
+      <div class="nav-divider"></div>
+      }<button
+        [class.active]="page()===n.id"
+        (click)="navigate(n.id)"
+        [attr.aria-current]="page()===n.id?'page':null"
+      >
+        <app-icon [name]="n.icon" /><span>{{n.name}}</span
+        >@if(n.id==='notifications'&&metrics().FAILED){<b class="nav-count"
+          >{{metrics().FAILED}}</b
+        >}</button
+      >}
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="connection-note">
+        <span class="pulse-dot"></span><span>Uma central. Mais conexões.</span>
+      </div>
+      <button class="profile" (click)="navigate('settings')">
+        <div class="avatar">{{initials(user().email)}}</div>
+        <div>
+          <strong>{{user().email.split('@')[0]}}</strong
+          ><small
+            >{{user().role==='ADMIN'?'Administrador':user().role==='OPERATOR'?'Operador':'Visualizador'}}</small
+          >
+        </div>
+        <app-icon name="settings" />
+      </button>
+    </div>
+  </aside>
+  <div class="main-area">
+    <header class="topbar">
+      <div class="breadcrumb">
+        <button
+          class="icon-button mobile-menu"
+          aria-label="Abrir menu"
+          (click)="mobile.set(true)"
+        >
+          <app-icon name="menu" /></button
+        ><span>Mibess</span><span class="slash">/</span
+        ><strong>{{title()}}</strong>
+      </div>
+      <div class="top-actions">
+        <span class="workspace-tag"
+          ><span class="pulse-dot"></span>Workspace conectado</span
+        ><button
+          class="icon-button"
+          title="Sair"
+          aria-label="Sair da conta"
+          (click)="logout()"
+        >
+          <app-icon name="logout" />
+        </button>
+      </div>
+    </header>
+    <main class="content">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">CENTRAL DE EVENTOS E NOTIFICAÇÕES</span>
+          <h1>
+            {{title()}}@if(page()==='dashboard'){<span class="heading-dot"
+              >.</span
+            >}
+          </h1>
+          <p>{{descriptions[page()]}}</p>
+        </div>
+        <div class="heading-actions">
+          <button
+            class="btn"
+            aria-label="Atualizar"
+            (click)="reload()"
+            [disabled]="loading()"
+          >
+            <app-icon name="refresh" [class.spin]="loading()" /><span
+              >Atualizar</span
+            ></button
+          >@if(isResource()&&isAdmin()){<button
+            class="btn primary"
+            (click)="openEditor()"
+          >
+            <app-icon name="plus" />{{page()==='applications'?'Nova
+            aplicação':page()==='contacts'?'Novo
+            contato':page()==='groups'?'Novo grupo':page()==='channels'?'Novo
+            canal':page()==='templates'?'Novo template':'Nova regra'}}</button
+          >}
+        </div>
+      </div>
+      @if(error()){
+      <div class="error" role="alert">
+        <app-icon name="alert" />{{error()}}<button
+          class="icon-button"
+          aria-label="Fechar erro"
+          (click)="error.set('')"
+        >
+          <app-icon name="close" />
+        </button>
+      </div>
+      } @if(page()==='dashboard'||!isResource()&&page()!=='settings'){
+      <div class="filters">
+        <div class="filter-label">
+          <span class="filter-lines">☷</span>Filtrar por
+        </div>
+        <select
+          aria-label="Aplicação"
+          [(ngModel)]="filterApp"
+          (ngModelChange)="refreshFilters()"
+        >
+          <option value="">Todas as aplicações</option>
+          @for(a of resources()['applications'];track a.id){
+          <option [value]="a.id">{{a.name}}</option>
+          }</select
+        >@if(page()!=='events'&&page()!=='audit'){<select
+          aria-label="Canal"
+          [(ngModel)]="filterChannel"
+          (ngModelChange)="refreshFilters()"
+        >
+          <option value="">Todos os canais</option>
+          @for(c of resources()['channels'];track c.id){
+          <option [value]="c.id">{{c.name}}</option>
+          }</select
+        >}@if(page()==='notifications'||page()==='events'){<select
+          aria-label="Status"
+          [(ngModel)]="filterStatus"
+          (ngModelChange)="refreshFilters()"
+        >
+          <option value="">Todos os status</option>
+          @for(s of
+          (page()==='notifications'?['PENDING','QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED']:['ACCEPTED','PROCESSED','NO_MATCH','FAILED']);track
+          s){
+          <option [value]="s">{{label(s)}}</option>
+          }</select
+        >}<select
+          class="period"
+          aria-label="Período"
+          [(ngModel)]="period"
+          (ngModelChange)="refreshFilters()"
+        >
+          <option value="today">Hoje</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="all">Todo o período</option>
+        </select>
+      </div>
+      } @if(page()==='dashboard'){
+      <section class="metrics-grid" aria-label="Indicadores">
+        <article class="metric-card">
+          <div class="metric-top">
+            <span>Eventos recebidos</span><app-icon name="events" />
+          </div>
+          <strong>{{metrics().events||0 | number}}</strong
+          ><small>O início de cada conexão</small>
+          <div class="mini-bars purple-bars">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-top">
+            <span>Notificações</span><app-icon name="notifications" />
+          </div>
+          <strong>{{metrics().notifications||0 | number}}</strong
+          ><small>Geradas pelas suas regras</small>
+        </article>
+        <article class="metric-card">
+          <div class="metric-top">
+            <span>Entregues</span><app-icon name="check" />
+          </div>
+          <strong
+            >{{(metrics().DELIVERED||0)+(metrics().READ||0) | number}}</strong
+          ><small
+            ><span class="dot success-dot"></span>{{metrics().deliveryRate||0}}%
+            dos envios aceitos</small
+          >
+        </article>
+        <article class="metric-card">
+          <div class="metric-top">
+            <span>Precisam de atenção</span><app-icon name="alert" />
+          </div>
+          <strong [class.red-text]="metrics().FAILED"
+            >{{metrics().FAILED||0 | number}}</strong
+          ><small
+            >{{metrics().FAILED?'Verifique as tentativas de envio':'Nenhuma
+            falha no período'}}</small
+          >
+        </article>
       </section>
-    } @else if(page()==='notifications'){
-      <section class="panel"><div class="panel-heading"><h2>Histórico de notificações <span class="inline-count">{{total()}}</span></h2><span class="subtle">Atualizado a cada consulta</span></div><ng-container *ngTemplateOutlet="notificationTable"></ng-container><ng-container *ngTemplateOutlet="pagination"></ng-container></section>
-    } @else if(page()==='settings'){
-      <div class="settings-grid"><section class="panel settings-card"><div class="setting-icon"><app-icon name="shield"/></div><h2>Segurança da conta</h2><p>Você está conectado como {{user().email}}.</p><form (ngSubmit)="changePassword()"><label>Senha atual<input type="password" name="currentPassword" [(ngModel)]="currentPassword" autocomplete="current-password" required></label><label>Nova senha<input type="password" name="newPassword" [(ngModel)]="newPassword" minlength="14" autocomplete="new-password" required></label><small>Use pelo menos 14 caracteres.</small><button class="btn primary" [disabled]="saving()">Alterar senha</button></form></section><section class="panel settings-card"><div class="setting-icon"><app-icon name="contacts"/></div><h2>Lista de supressão</h2><p>Destinatários nesta lista não recebem notificações.</p>@if(canOperate()){<form (ngSubmit)="suppress()"><label>Telefone<input name="suppressionPhone" [(ngModel)]="suppressionForm.address" placeholder="+5516999999999" required></label><label>Motivo<input name="suppressionReason" [(ngModel)]="suppressionForm.reason" required></label><button class="btn" [disabled]="saving()">Bloquear destinatário</button></form>}@for(s of suppressions();track s.id){<div class="setting-row"><span>{{mask(s.address)}}</span><small>{{s.reason}}</small></div>}</section>@if(isAdmin()){<section class="panel settings-card"><div class="setting-icon"><app-icon name="groups"/></div><h2>Pessoas do workspace</h2>@for(u of users();track u.id){<div class="setting-row"><span>{{u.email}}</span><span class="chip muted">{{u.role}}</span></div>}<form (ngSubmit)="createUser()"><label>E-mail<input type="email" name="userEmail" [(ngModel)]="userForm.email" required></label><label>Senha inicial<input type="password" name="userPassword" [(ngModel)]="userForm.password" minlength="14" autocomplete="new-password" required></label><label>Permissão<select name="role" [(ngModel)]="userForm.role"><option>VIEWER</option><option>OPERATOR</option><option>ADMIN</option></select></label><button class="btn primary" [disabled]="saving()">Adicionar pessoa</button></form></section>}</div>
-    } @else {
-      <section class="panel"><div class="panel-heading"><h2>{{title()}} <span class="inline-count">{{total()}}</span></h2></div>@if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container>}@else if(!items().length){<div class="empty-state"><div class="empty-icon"><app-icon [name]="page()"/></div><h3>Nenhum registro neste período</h3><p>Os registros aparecerão aqui conforme sua operação acontece.</p></div>}@else{<div class="table-scroll"><table><thead><tr><th>{{page()==='audit'?'Ação':'Identificador'}}</th><th>{{page()==='audit'?'Responsável':'Origem'}}</th><th>{{page()==='audit'?'Recurso':'Status'}}</th><th>Data</th><th></th></tr></thead><tbody>@for(row of items();track row.id){<tr><td><strong>{{page()==='audit'?row.action:page()==='events'?row.type:row.id.slice(0,8)}}</strong>@if(row.correlation_id){<small class="cell-sub code-text">{{row.correlation_id}}</small>}</td><td>{{page()==='audit'?row.actor:page()==='events'?name('applications',row.application_id):name('channels',row.channel_connection_id)}}</td><td>@if(page()==='audit'){<span class="code-text">{{row.resource_id?.slice(0,8)||'—'}}</span>}@else{<span class="chip" [ngClass]="statusClass(row.status)"><i></i>{{label(row.status)}}</span>}</td><td class="subtle">{{row.created_at||row.received_at|date:'dd MMM, HH:mm:ss'}}</td><td><button class="icon-button" aria-label="Detalhes do registro" (click)="showDetail(row)"><app-icon name="chevron"/></button></td></tr>}</tbody></table></div>}<ng-container *ngTemplateOutlet="pagination"></ng-container></section>
-    }
-    <footer class="page-footer"><span>Mibess Notify</span><span>Eventos que conectam.</span></footer></main></div>
+      <section class="dashboard-middle">
+        <article class="panel activity-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Atividade de notificações</h2>
+              <p>Acompanhe o ritmo da sua operação</p>
+            </div>
+            <div class="legend">
+              <span><i class="purple-bg"></i>Total</span
+              ><span><i class="green-bg"></i>Entregues</span>
+            </div>
+          </div>
+          @if(bars().length){
+          <div class="chart">
+            <div class="chart-grid"></div>
+            @for(day of bars();track day.day){
+            <div class="chart-column">
+              <div class="bar-pair">
+                <div
+                  class="bar total-bar"
+                  [style.height.%]="barHeight(day.total)"
+                  [title]="day.total+' notificações'"
+                ></div>
+                <div
+                  class="bar delivered-bar"
+                  [style.height.%]="barHeight(day.delivered)"
+                  [title]="day.delivered+' entregues'"
+                ></div>
+              </div>
+              <small>{{day.day | date:'dd/MM'}}</small>
+            </div>
+            }
+          </div>
+          }@else{
+          <div class="chart-empty">
+            <div class="empty-wave">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <strong>Sua operação começa com um evento</strong>
+            <p>
+              As notificações aparecerão aqui assim que suas aplicações
+              publicarem eventos.
+            </p>
+          </div>
+          }
+        </article>
+        <article class="panel delivery-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Cada etapa conta</h2>
+              <p>Do envio à leitura</p>
+            </div>
+            <app-icon name="arrow" />
+          </div>
+          <div class="delivery-stages">
+            @for(s of ['QUEUED','PROCESSING','SENT','DELIVERED','READ'];track
+            s){
+            <div>
+              <span
+                ><i class="dot" [class]="'dot stage-'+s"></i>{{label(s)}}</span
+              ><strong>{{metrics()[s]||0}}</strong>
+            </div>
+            }
+          </div>
+          <div class="delivery-foot">
+            <app-icon name="shield" /><span
+              >Entrega confirmada pelo provider</span
+            >
+          </div>
+        </article>
+      </section>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Últimas notificações</h2>
+            <p>Uma visão de cada conexão recente</p>
+          </div>
+          <button class="text-button" (click)="navigate('notifications')">
+            Ver todas<app-icon name="arrow" />
+          </button>
+        </div>
+        <ng-container *ngTemplateOutlet="notificationTable"></ng-container>
+      </section>
+      <section class="integration-banner">
+        <div class="banner-icon"><app-icon name="events" /></div>
+        <div>
+          <h3>Seus sistemas falam eventos. O Notify cuida do resto.</h3>
+          <p>
+            Conecte uma aplicação, defina as regras e acompanhe cada entrega.
+          </p>
+        </div>
+        <button class="btn" (click)="navigate('applications')">
+          Gerenciar aplicações<app-icon name="arrow" />
+        </button>
+      </section>
+      } @else if(isResource()){
+      <section class="panel resource-panel">
+        <div class="list-toolbar">
+          <div class="search-input">
+            <app-icon name="search" /><input
+              aria-label="Buscar na lista"
+              placeholder="Buscar por nome ou código…"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+            />
+          </div>
+          <span class="count-label">{{filtered().length}} registros</span>
+        </div>
+        @if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container
+        >}@else if(!filtered().length){
+        <div class="empty-state">
+          <div class="empty-icon"><app-icon [name]="page()" /></div>
+          <h3>
+            {{search()?'Nenhum resultado encontrado':'Pronto para a primeira
+            conexão'}}
+          </h3>
+          <p>
+            {{search()?'Tente buscar por outro nome ou código.':'Adicione um
+            registro para começar a configurar sua operação.'}}
+          </p>
+          @if(isAdmin()&&!search()){<button
+            class="btn primary"
+            (click)="openEditor()"
+          >
+            <app-icon name="plus" />Adicionar {{title().toLowerCase()}}</button
+          >}
+        </div>
+        }@else{
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>
+                  {{page()==='rules'?'Evento':page()==='contacts'?'Contato':page()==='templates'?'Template
+                  Meta':page()==='groups'?'Membros':'Configuração'}}
+                </th>
+                <th>Status</th>
+                <th>Atualização</th>
+                <th><span class="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for(row of filtered();track row.id){
+              <tr>
+                <td>
+                  <button class="table-name" (click)="openEditor(row)">
+                    <span
+                      class="resource-avatar"
+                      [class.green-avatar]="page()==='channels'"
+                      ><app-icon
+                        [name]="page()==='channels'?'channels':page()==='contacts'?'contacts':page()==='rules'?'rules':'apps'" /></span
+                    ><span
+                      ><strong>{{row.name}}</strong
+                      ><small>{{row.code}}</small></span
+                    >
+                  </button>
+                </td>
+                <td>
+                  @switch(page()){@case('rules'){<span class="code-text"
+                    >{{row.spec.eventType}}</span
+                  ><small class="cell-sub"
+                    >{{name('channels',row.spec.channelConnectionId)}}</small
+                  >}@case('contacts'){<span>{{mask(row.spec.phone)}}</span
+                  ><small class="cell-sub"
+                    >{{row.spec.whatsappOptIn?'Com consentimento':'Consentimento
+                    pendente'}}</small
+                  >}@case('groups'){<span
+                    >{{row.spec.members?.length||0}} contatos</span
+                  >}@case('templates'){<span class="code-text"
+                    >{{row.spec.providerTemplateName}}</span
+                  ><small class="cell-sub"
+                    >{{row.spec.language}} · {{label(row.spec.status)}}</small
+                  >}@case('channels'){<span>WhatsApp · Meta Cloud API</span
+                  ><small class="cell-sub"
+                    >{{row.spec.credentialsConfigured?'Credenciais
+                    configuradas':'Aguardando configuração'}}</small
+                  >}@default{<span
+                    >{{row.spec.description||'Eventos de negócio'}}</span
+                  >}}
+                </td>
+                <td>
+                  <span
+                    class="chip"
+                    [class.success]="row.enabled"
+                    [class.muted]="!row.enabled"
+                    ><i></i>{{row.enabled?'Ativo':'Desativado'}}</span
+                  >
+                </td>
+                <td class="subtle">
+                  {{row.updatedAt||row.createdAt|date:'dd MMM, HH:mm'}}
+                </td>
+                <td>
+                  <div class="row-actions">
+                    @if(page()==='applications'&&isAdmin()){<button
+                      class="icon-button"
+                      title="Gerenciar API keys"
+                      aria-label="Gerenciar API keys"
+                      (click)="manageKeys(row)"
+                    >
+                      <app-icon name="key" /></button
+                    >}<button
+                      class="icon-button"
+                      title="Ver detalhes"
+                      aria-label="Ver detalhes"
+                      (click)="openEditor(row)"
+                    >
+                      <app-icon name="chevron" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+      </section>
+      } @else if(page()==='notifications'){
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>
+            Histórico de notificações
+            <span class="inline-count">{{total()}}</span>
+          </h2>
+          <span class="subtle">Atualizado a cada consulta</span>
+        </div>
+        <ng-container *ngTemplateOutlet="notificationTable"></ng-container
+        ><ng-container *ngTemplateOutlet="pagination"></ng-container>
+      </section>
+      } @else if(page()==='settings'){
+      <div class="settings-grid">
+        <section class="panel settings-card">
+          <div class="setting-icon"><app-icon name="shield" /></div>
+          <h2>Segurança da conta</h2>
+          <p>Você está conectado como {{user().email}}.</p>
+          <form (ngSubmit)="changePassword()">
+            <label
+              >Senha atual<input
+                type="password"
+                name="currentPassword"
+                [(ngModel)]="currentPassword"
+                autocomplete="current-password"
+                required /></label
+            ><label
+              >Nova senha<input
+                type="password"
+                name="newPassword"
+                [(ngModel)]="newPassword"
+                minlength="14"
+                autocomplete="new-password"
+                required /></label
+            ><small>Use pelo menos 14 caracteres.</small
+            ><button class="btn primary" [disabled]="saving()">
+              Alterar senha
+            </button>
+          </form>
+        </section>
+        <section class="panel settings-card">
+          <div class="setting-icon"><app-icon name="contacts" /></div>
+          <h2>Lista de supressão</h2>
+          <p>Destinatários nesta lista não recebem notificações.</p>
+          @if(canOperate()){
+          <form (ngSubmit)="suppress()">
+            <label
+              >Telefone<input
+                name="suppressionPhone"
+                [(ngModel)]="suppressionForm.address"
+                placeholder="+5516999999999"
+                required /></label
+            ><label
+              >Motivo<input
+                name="suppressionReason"
+                [(ngModel)]="suppressionForm.reason"
+                required /></label
+            ><button class="btn" [disabled]="saving()">
+              Bloquear destinatário
+            </button>
+          </form>
+          }@for(s of suppressions();track s.id){
+          <div class="setting-row">
+            <span>{{mask(s.address)}}</span><small>{{s.reason}}</small>
+          </div>
+          }
+        </section>
+        @if(isAdmin()){
+        <section class="panel settings-card">
+          <div class="setting-icon"><app-icon name="groups" /></div>
+          <h2>Pessoas do workspace</h2>
+          @for(u of users();track u.id){
+          <div class="setting-row">
+            <span>{{u.email}}</span><span class="chip muted">{{u.role}}</span>
+          </div>
+          }
+          <form (ngSubmit)="createUser()">
+            <label
+              >E-mail<input
+                type="email"
+                name="userEmail"
+                [(ngModel)]="userForm.email"
+                required /></label
+            ><label
+              >Senha inicial<input
+                type="password"
+                name="userPassword"
+                [(ngModel)]="userForm.password"
+                minlength="14"
+                autocomplete="new-password"
+                required /></label
+            ><label
+              >Permissão<select name="role" [(ngModel)]="userForm.role">
+                <option>VIEWER</option>
+                <option>OPERATOR</option>
+                <option>ADMIN</option>
+              </select></label
+            ><button class="btn primary" [disabled]="saving()">
+              Adicionar pessoa
+            </button>
+          </form>
+        </section>
+        }
+      </div>
+      } @else {
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>{{title()}} <span class="inline-count">{{total()}}</span></h2>
+        </div>
+        @if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container
+        >}@else if(!items().length){
+        <div class="empty-state">
+          <div class="empty-icon"><app-icon [name]="page()" /></div>
+          <h3>Nenhum registro neste período</h3>
+          <p>Os registros aparecerão aqui conforme sua operação acontece.</p>
+        </div>
+        }@else{
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>{{page()==='audit'?'Ação':'Identificador'}}</th>
+                <th>{{page()==='audit'?'Responsável':'Origem'}}</th>
+                <th>{{page()==='audit'?'Recurso':'Status'}}</th>
+                <th>Data</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for(row of items();track row.id){
+              <tr>
+                <td>
+                  <strong
+                    >{{page()==='audit'?row.action:page()==='events'?row.type:row.id.slice(0,8)}}</strong
+                  >@if(row.correlation_id){<small class="cell-sub code-text"
+                    >{{row.correlation_id}}</small
+                  >}
+                </td>
+                <td>
+                  {{page()==='audit'?row.actor:page()==='events'?name('applications',row.application_id):name('channels',row.channel_connection_id)}}
+                </td>
+                <td>
+                  @if(page()==='audit'){<span class="code-text"
+                    >{{row.resource_id?.slice(0,8)||'—'}}</span
+                  >}@else{<span class="chip" [ngClass]="statusClass(row.status)"
+                    ><i></i>{{label(row.status)}}</span
+                  >}
+                </td>
+                <td class="subtle">
+                  {{row.created_at||row.received_at|date:'dd MMM, HH:mm:ss'}}
+                </td>
+                <td>
+                  <button
+                    class="icon-button"
+                    aria-label="Detalhes do registro"
+                    (click)="showDetail(row)"
+                  >
+                    <app-icon name="chevron" />
+                  </button>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }<ng-container *ngTemplateOutlet="pagination"></ng-container>
+      </section>
+      }
+      <footer class="page-footer">
+        <span>Mibess Notify</span><span>Eventos que conectam.</span>
+      </footer>
+    </main>
   </div>
+</div>
 }
 
 <ng-template #notificationTable>
-  @if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container>}@else if(!items().length){<div class="empty-state compact"><div class="empty-icon"><app-icon name="notifications"/></div><h3>Nenhuma notificação por aqui, ainda</h3><p>Configure uma regra e publique seu primeiro evento.</p><button class="text-button" (click)="navigate('rules')">Configurar regras<app-icon name="arrow"/></button></div>}@else{<div class="table-scroll"><table><thead><tr><th>Notificação</th><th>Destinatário</th><th>Canal</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody>@for(row of (page()==='dashboard'?items().slice(0,5):items());track row.id){<tr><td><button class="table-name" (click)="showDetail(row)"><span class="resource-avatar"><app-icon name="notifications"/></span><span><strong>{{name('applications',row.application_id)}}</strong><small>{{name('templates',row.template_id)}}</small></span></button></td><td><span>{{row.recipient_name}}</span><small class="cell-sub">{{mask(row.recipient_address)}}</small></td><td><span class="channel-label"><app-icon name="channels"/>WhatsApp</span><small class="cell-sub">{{name('channels',row.channel_connection_id)}}</small></td><td><span class="chip" [ngClass]="statusClass(row.status)"><i></i>{{label(row.status)}}</span></td><td class="subtle nowrap">{{row.created_at|date:'dd MMM, HH:mm'}}</td><td><button class="icon-button" aria-label="Ver timeline da notificação" (click)="showDetail(row)"><app-icon name="chevron"/></button></td></tr>}</tbody></table></div>}
+  @if(loading()){<ng-container *ngTemplateOutlet="skeleton"></ng-container
+  >}@else if(!items().length){
+  <div class="empty-state compact">
+    <div class="empty-icon"><app-icon name="notifications" /></div>
+    <h3>Nenhuma notificação por aqui, ainda</h3>
+    <p>Configure uma regra e publique seu primeiro evento.</p>
+    <button class="text-button" (click)="navigate('rules')">
+      Configurar regras<app-icon name="arrow" />
+    </button>
+  </div>
+  }@else{
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Notificação</th>
+          <th>Destinatário</th>
+          <th>Canal</th>
+          <th>Status</th>
+          <th>Data</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(row of (page()==='dashboard'?items().slice(0,5):items());track
+        row.id){
+        <tr>
+          <td>
+            <button class="table-name" (click)="showDetail(row)">
+              <span class="resource-avatar"
+                ><app-icon name="notifications" /></span
+              ><span
+                ><strong>{{name('applications',row.application_id)}}</strong
+                ><small>{{name('templates',row.template_id)}}</small></span
+              >
+            </button>
+          </td>
+          <td>
+            <span>{{row.recipient_name}}</span
+            ><small class="cell-sub">{{mask(row.recipient_address)}}</small>
+          </td>
+          <td>
+            <span class="channel-label"
+              ><app-icon name="channels" />WhatsApp</span
+            ><small class="cell-sub"
+              >{{name('channels',row.channel_connection_id)}}</small
+            >
+          </td>
+          <td>
+            <span class="chip" [ngClass]="statusClass(row.status)"
+              ><i></i>{{label(row.status)}}</span
+            >
+          </td>
+          <td class="subtle nowrap">{{row.created_at|date:'dd MMM, HH:mm'}}</td>
+          <td>
+            <button
+              class="icon-button"
+              aria-label="Ver timeline da notificação"
+              (click)="showDetail(row)"
+            >
+              <app-icon name="chevron" />
+            </button>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
 </ng-template>
-<ng-template #skeleton><div class="skeleton-list" aria-label="Carregando dados">@for(i of [1,2,3,4];track i){<div class="skeleton-row"><i></i><span></span><span></span><span></span></div>}</div></ng-template>
-<ng-template #pagination><div class="pagination"><span>{{total()}} registros · Página {{index()+1}}</span><div><button class="btn small" [disabled]="index()===0||loading()" (click)="changeIndex(-1)">Anterior</button><button class="btn small" [disabled]="(index()+1)*25>=total()||loading()" (click)="changeIndex(1)">Próxima</button></div></div></ng-template>
+<ng-template #skeleton
+  ><div class="skeleton-list" aria-label="Carregando dados">
+    @for(i of [1,2,3,4];track i){
+    <div class="skeleton-row">
+      <i></i><span></span><span></span><span></span>
+    </div>
+    }
+  </div></ng-template
+>
+<ng-template #pagination
+  ><div class="pagination">
+    <span>{{total()}} registros · Página {{index()+1}}</span>
+    <div>
+      <button
+        class="btn small"
+        [disabled]="index()===0||loading()"
+        (click)="changeIndex(-1)"
+      >
+        Anterior</button
+      ><button
+        class="btn small"
+        [disabled]="(index()+1)*25>=total()||loading()"
+        (click)="changeIndex(1)"
+      >
+        Próxima
+      </button>
+    </div>
+  </div></ng-template
+>
 
 @if(editor()){
-  <div class="modal-backdrop" (click)="editor.set(false)"></div><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="editor-title"><div class="drawer-header"><div><span class="eyebrow">{{title()}}</span><h2 id="editor-title">{{editId?'Detalhes e configuração':'Adicionar registro'}}</h2></div><button class="icon-button" aria-label="Fechar" (click)="editor.set(false)"><app-icon name="close"/></button></div><form (ngSubmit)="save()" class="drawer-form"><div class="drawer-body">@if(error()){<div class="error" role="alert">{{error()}}</div>}<div class="form-grid"><label>Nome<input name="name" [(ngModel)]="form.name" maxlength="150" required [disabled]="!isAdmin()"></label><label>Código<input name="code" [(ngModel)]="form.code" pattern="[A-Za-z][A-Za-z0-9_]{1,79}" required [disabled]="!isAdmin()"></label></div><label class="checkbox-label status-toggle"><input name="enabled" type="checkbox" [(ngModel)]="form.enabled" [disabled]="!isAdmin()"><span>Registro ativo<small>Habilita o uso deste registro na operação.</small></span></label>
-    @for(field of fields;track field.key){<div class="field" [class.hidden]="field.type==='target'&&form.spec.targetType==='EVENT_RECIPIENT'">@switch(field.type){@case('checkbox'){<label class="checkbox-label"><input [name]="field.key" type="checkbox" [(ngModel)]="form.spec[field.key]" [disabled]="!isAdmin()">{{field.label}}</label>}@case('members'){<label>{{field.label}}</label><div class="member-list">@for(c of choices(field);track c.id){<label class="checkbox-label"><input type="checkbox" [checked]="form.spec.members?.includes(c.id)" (change)="toggleMember(c.id)" [disabled]="!isAdmin()"><span>{{c.name}}<small>{{mask(c.spec['phone'])}}</small></span></label>}@empty{<p class="subtle">Cadastre contatos antes de adicionar membros.</p>}</div>}@case('conditions'){<label>{{field.label}}</label>@for(condition of form.spec.conditions;track $index;let i=$index){<div class="condition-row"><input [name]="'field'+i" [(ngModel)]="condition.field" placeholder="data.status" aria-label="Campo da condição" [disabled]="!isAdmin()"><select [name]="'operator'+i" [(ngModel)]="condition.operator" aria-label="Operador" [disabled]="!isAdmin()">@for(op of ['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','GREATER_THAN','LESS_THAN','CONTAINS','IN'];track op){<option>{{op}}</option>}</select><input [name]="'value'+i" [(ngModel)]="condition.value" placeholder="OUT_FOR_DELIVERY" aria-label="Valor da condição" [disabled]="!isAdmin()"><button type="button" class="icon-button" aria-label="Remover condição" (click)="form.spec.conditions.splice(i,1)" [disabled]="!isAdmin()"><app-icon name="close"/></button></div>}@if(isAdmin()){<button type="button" class="text-button" (click)="form.spec.conditions.push({field:'data.status',operator:'EQUALS',value:''})"><app-icon name="plus"/>Adicionar condição</button>}}@default{<label>{{field.label}}@if(field.type==='textarea'){<textarea [name]="field.key" [(ngModel)]="form.spec[field.key]" [placeholder]="field.placeholder||''" [required]="!!field.required" rows="4" [disabled]="!isAdmin()"></textarea>}@else if(field.type==='select'){<select [name]="field.key" [(ngModel)]="form.spec[field.key]" [required]="!!field.required" [disabled]="!isAdmin()">@for(option of field.options;track option){<option [value]="option">{{label(option)}}</option>}</select>}@else if(field.type==='ref'||field.type==='target'){<select [name]="field.key" [(ngModel)]="form.spec[field.key]" [required]="!!field.required" [disabled]="!isAdmin()"><option value="">Selecione…</option>@for(option of choices(field);track option.id){<option [value]="option.id">{{option.name}}</option>}</select>}@else{<input [name]="field.key" [type]="field.type||'text'" [(ngModel)]="form.spec[field.key]" [placeholder]="field.placeholder||''" [required]="!!field.required" [disabled]="!isAdmin()" [autocomplete]="field.type==='password'?'new-password':'off'">}</label>@if(field.hint){<small class="field-hint">{{field.hint}}</small>}}}</div>}
-    @if(page()==='channels'){<div class="info-note"><app-icon name="shield"/><p>As credenciais são criptografadas e nunca voltam ao navegador. A coexistência deve estar habilitada na conta Meta. Webhook: <code>/webhooks/meta/whatsapp</code></p></div>}@if(page()==='templates'){<div class="info-note"><app-icon name="templates"/><p>O status deve corresponder à aprovação na Meta. Alterá-lo aqui não submete nem aprova o template no provider.</p></div>}</div><div class="drawer-footer"><button type="button" class="btn" (click)="editor.set(false)">Fechar</button>@if(isAdmin()){<button class="btn primary" [disabled]="saving()">{{saving()?'Salvando…':'Salvar alterações'}}</button>}</div></form></section>
+<div class="modal-backdrop" (click)="editor.set(false)"></div>
+<section
+  class="drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="editor-title"
+>
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow">{{title()}}</span>
+      <h2 id="editor-title">
+        {{editId?'Detalhes e configuração':'Adicionar registro'}}
+      </h2>
+    </div>
+    <button class="icon-button" aria-label="Fechar" (click)="editor.set(false)">
+      <app-icon name="close" />
+    </button>
+  </div>
+  <form (ngSubmit)="save()" class="drawer-form">
+    <div class="drawer-body">
+      @if(error()){
+      <div class="error" role="alert">{{error()}}</div>
+      }
+      <div class="form-grid">
+        <label
+          >Nome<input
+            name="name"
+            [(ngModel)]="form.name"
+            maxlength="150"
+            required
+            [disabled]="!isAdmin()" /></label
+        ><label
+          >Código<input
+            name="code"
+            [(ngModel)]="form.code"
+            pattern="[A-Za-z][A-Za-z0-9_]{1,79}"
+            required
+            [disabled]="!isAdmin()"
+        /></label>
+      </div>
+      <label class="checkbox-label status-toggle"
+        ><input
+          name="enabled"
+          type="checkbox"
+          [(ngModel)]="form.enabled"
+          [disabled]="!isAdmin()"
+        /><span
+          >Registro ativo<small
+            >Habilita o uso deste registro na operação.</small
+          ></span
+        ></label
+      >
+      @for(field of fields;track field.key){
+      <div
+        class="field"
+        [class.hidden]="field.type==='target'&&form.spec.targetType==='EVENT_RECIPIENT'"
+      >
+        @switch(field.type){@case('checkbox'){<label class="checkbox-label"
+          ><input
+            [name]="field.key"
+            type="checkbox"
+            [(ngModel)]="form.spec[field.key]"
+            [disabled]="!isAdmin()"
+          />{{field.label}}</label
+        >}@case('members'){<label>{{field.label}}</label>
+        <div class="member-list">
+          @for(c of choices(field);track c.id){<label class="checkbox-label"
+            ><input
+              type="checkbox"
+              [checked]="form.spec.members?.includes(c.id)"
+              (change)="toggleMember(c.id)"
+              [disabled]="!isAdmin()"
+            /><span
+              >{{c.name}}<small>{{mask(c.spec['phone'])}}</small></span
+            ></label
+          >}@empty{
+          <p class="subtle">Cadastre contatos antes de adicionar membros.</p>
+          }
+        </div>
+        }@case('conditions'){<label>{{field.label}}</label>@for(condition of
+        form.spec.conditions;track $index;let i=$index){
+        <div class="condition-row">
+          <input
+            [name]="'field'+i"
+            [(ngModel)]="condition.field"
+            placeholder="data.status"
+            aria-label="Campo da condição"
+            [disabled]="!isAdmin()"
+          /><select
+            [name]="'operator'+i"
+            [(ngModel)]="condition.operator"
+            aria-label="Operador"
+            [disabled]="!isAdmin()"
+          >
+            @for(op of
+            ['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','GREATER_THAN','LESS_THAN','CONTAINS','IN'];track
+            op){
+            <option>{{op}}</option>
+            }</select
+          ><input
+            [name]="'value'+i"
+            [(ngModel)]="condition.value"
+            placeholder="OUT_FOR_DELIVERY"
+            aria-label="Valor da condição"
+            [disabled]="!isAdmin()"
+          /><button
+            type="button"
+            class="icon-button"
+            aria-label="Remover condição"
+            (click)="form.spec.conditions.splice(i,1)"
+            [disabled]="!isAdmin()"
+          >
+            <app-icon name="close" />
+          </button>
+        </div>
+        }@if(isAdmin()){<button
+          type="button"
+          class="text-button"
+          (click)="form.spec.conditions.push({field:'data.status',operator:'EQUALS',value:''})"
+        >
+          <app-icon name="plus" />Adicionar condição</button
+        >}}@default{<label
+          >{{field.label}}@if(field.type==='textarea'){<textarea
+            [name]="field.key"
+            [(ngModel)]="form.spec[field.key]"
+            [placeholder]="field.placeholder||''"
+            [required]="!!field.required"
+            rows="4"
+            [disabled]="!isAdmin()"
+          ></textarea
+          >}@else if(field.type==='select'){<select
+            [name]="field.key"
+            [(ngModel)]="form.spec[field.key]"
+            [required]="!!field.required"
+            [disabled]="!isAdmin()"
+          >
+            @for(option of field.options;track option){
+            <option [value]="option">{{label(option)}}</option>
+            }</select
+          >}@else if(field.type==='ref'||field.type==='target'){<select
+            [name]="field.key"
+            [(ngModel)]="form.spec[field.key]"
+            [required]="!!field.required"
+            [disabled]="!isAdmin()"
+          >
+            <option value="">Selecione…</option>
+            @for(option of choices(field);track option.id){
+            <option [value]="option.id">{{option.name}}</option>
+            }</select
+          >}@else{<input
+            [name]="field.key"
+            [type]="field.type||'text'"
+            [(ngModel)]="form.spec[field.key]"
+            [placeholder]="field.placeholder||''"
+            [required]="!!field.required"
+            [disabled]="!isAdmin()"
+            [autocomplete]="field.type==='password'?'new-password':'off'"
+          />}</label
+        >@if(field.hint){<small class="field-hint">{{field.hint}}</small>}}}
+      </div>
+      } @if(page()==='channels'){
+      <div class="info-note">
+        <app-icon name="shield" />
+        <p>
+          As credenciais são criptografadas e nunca voltam ao navegador. A
+          coexistência deve estar habilitada na conta Meta. Webhook:
+          <code>/webhooks/meta/whatsapp</code>
+        </p>
+      </div>
+      }@if(page()==='templates'){
+      <div class="info-note">
+        <app-icon name="templates" />
+        <p>
+          O status deve corresponder à aprovação na Meta. Alterá-lo aqui não
+          submete nem aprova o template no provider.
+        </p>
+      </div>
+      }
+    </div>
+    <div class="drawer-footer">
+      <button type="button" class="btn" (click)="editor.set(false)">
+        Fechar</button
+      >@if(isAdmin()){<button class="btn primary" [disabled]="saving()">
+        {{saving()?'Salvando…':'Salvar alterações'}}</button
+      >}
+    </div>
+  </form>
+</section>
+} @if(detail()){
+<div class="modal-backdrop" (click)="detail.set(null)"></div>
+<section
+  class="drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="detail-title"
+>
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow"
+        >{{detail().notification?'CADA ETAPA, REGISTRADA':'REGISTRO'}}</span
+      >
+      <h2 id="detail-title">
+        {{detail().notification?'Timeline da notificação':'Detalhes do evento'}}
+      </h2>
+    </div>
+    <button class="icon-button" aria-label="Fechar" (click)="detail.set(null)">
+      <app-icon name="close" />
+    </button>
+  </div>
+  <div class="drawer-body">
+    @if(error()){
+    <div class="error">{{error()}}</div>
+    }@if(detail().notification){
+    <div class="notification-summary">
+      <span class="chip" [ngClass]="statusClass(detail().notification.status)"
+        ><i></i>{{label(detail().notification.status)}}</span
+      >
+      <h3>{{detail().notification.recipient_name}}</h3>
+      <p>{{mask(detail().notification.recipient_address)}}</p>
+      <dl>
+        <div>
+          <dt>Aplicação</dt>
+          <dd>{{name('applications',detail().notification.application_id)}}</dd>
+        </div>
+        <div>
+          <dt>Identidade remetente</dt>
+          <dd>
+            {{name('channels',detail().notification.channel_connection_id)}}
+          </dd>
+        </div>
+        <div>
+          <dt>Template</dt>
+          <dd>{{name('templates',detail().notification.template_id)}}</dd>
+        </div>
+        <div>
+          <dt>Tentativas</dt>
+          <dd>{{detail().notification.attempt_count}}</dd>
+        </div>
+      </dl>
+      @if(detail().notification.error_code){
+      <div class="error">{{detail().notification.error_code}}</div>
+      }
+    </div>
+    <h3 class="section-title">Histórico de entrega</h3>
+    <ol class="timeline">
+      @for(item of detail().timeline;track item.id){
+      <li>
+        <span class="timeline-marker" [ngClass]="statusClass(item.status)"
+          ><app-icon [name]="item.status==='FAILED'?'alert':'check'"
+        /></span>
+        <div>
+          <strong>{{label(item.status)}}</strong>
+          <p>{{item.description}}</p>
+          <time>{{item.created_at|date:'dd/MM/yyyy · HH:mm:ss'}}</time>
+        </div>
+      </li>
+      }
+    </ol>
+    <h3 class="section-title">Tentativas</h3>
+    @for(attempt of detail().attempts;track attempt.id){
+    <div class="attempt-card">
+      <strong>Tentativa {{attempt.attempt_number}}</strong
+      ><span class="chip" [ngClass]="statusClass(attempt.status)"
+        >{{label(attempt.status)}}</span
+      ><small>{{attempt.started_at|date:'dd/MM · HH:mm:ss'}}</small
+      >@if(attempt.error_message){
+      <p>{{attempt.error_message}}</p>
+      }
+    </div>
+    }@empty{
+    <p class="subtle">Nenhuma tentativa de envio realizada.</p>
+    }}@else{
+    <pre class="record-json">{{detail().record|json}}</pre>
+    }
+  </div>
+  <div class="drawer-footer">
+    <button class="btn" (click)="detail.set(null)">Fechar</button
+    >@if(detail().notification?.status==='FAILED'&&canOperate()){<button
+      class="btn primary"
+      [disabled]="saving()"
+      (click)="retry()"
+    >
+      <app-icon name="refresh" />Reenviar</button
+    >}
+  </div>
+</section>
+} @if(keyDialog()){
+<div class="modal-backdrop" (click)="keyDialog.set(null);newKey.set('')"></div>
+<section
+  class="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="keys-title"
+>
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow">{{keyDialog().name}}</span>
+      <h2 id="keys-title">Chaves de API</h2>
+    </div>
+    <button
+      class="icon-button"
+      aria-label="Fechar"
+      (click)="keyDialog.set(null);newKey.set('')"
+    >
+      <app-icon name="close" />
+    </button>
+  </div>
+  <div class="drawer-body">
+    <p class="subtle">
+      Cada aplicação publica eventos usando sua própria chave. O valor completo
+      aparece apenas ao criar.
+    </p>
+    @if(newKey()){
+    <div class="secret-box">
+      <strong>Salve sua chave agora</strong><code>{{newKey()}}</code
+      ><button class="btn small" (click)="copyKey()">
+        <app-icon name="copy" />Copiar chave
+      </button>
+    </div>
+    }@for(key of keys();track key.id){
+    <div class="key-row">
+      <div>
+        <code>{{key.prefix}}••••••</code
+        ><small
+          >{{key.last_used_at?'Último uso: '+(key.last_used_at|date:'dd/MM
+          HH:mm'):'Ainda não utilizada'}}</small
+        >
+      </div>
+      <span class="chip" [ngClass]="statusClass(key.status)"
+        >{{label(key.status)}}</span
+      >@if(key.status==='ACTIVE'){<button
+        class="text-button red-text"
+        (click)="revokeKey(key.id)"
+      >
+        Revogar</button
+      >}
+    </div>
+    }@if(error()){
+    <div class="error">{{error()}}</div>
+    }
+  </div>
+  <div class="drawer-footer">
+    <button class="btn" [disabled]="saving()" (click)="createKey(true)">
+      Rotacionar chaves</button
+    ><button class="btn primary" [disabled]="saving()" (click)="createKey()">
+      <app-icon name="plus" />Criar chave
+    </button>
+  </div>
+</section>
+} @if(toast()){
+<div class="toast" role="status"><app-icon name="check" />{{toast()}}</div>
 }
-@if(detail()){
-  <div class="modal-backdrop" (click)="detail.set(null)"></div><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="drawer-header"><div><span class="eyebrow">{{detail().notification?'CADA ETAPA, REGISTRADA':'REGISTRO'}}</span><h2 id="detail-title">{{detail().notification?'Timeline da notificação':'Detalhes do evento'}}</h2></div><button class="icon-button" aria-label="Fechar" (click)="detail.set(null)"><app-icon name="close"/></button></div><div class="drawer-body">@if(error()){<div class="error">{{error()}}</div>}@if(detail().notification){<div class="notification-summary"><span class="chip" [ngClass]="statusClass(detail().notification.status)"><i></i>{{label(detail().notification.status)}}</span><h3>{{detail().notification.recipient_name}}</h3><p>{{mask(detail().notification.recipient_address)}}</p><dl><div><dt>Aplicação</dt><dd>{{name('applications',detail().notification.application_id)}}</dd></div><div><dt>Identidade remetente</dt><dd>{{name('channels',detail().notification.channel_connection_id)}}</dd></div><div><dt>Template</dt><dd>{{name('templates',detail().notification.template_id)}}</dd></div><div><dt>Tentativas</dt><dd>{{detail().notification.attempt_count}}</dd></div></dl>@if(detail().notification.error_code){<div class="error">{{detail().notification.error_code}}</div>}</div><h3 class="section-title">Histórico de entrega</h3><ol class="timeline">@for(item of detail().timeline;track item.id){<li><span class="timeline-marker" [ngClass]="statusClass(item.status)"><app-icon [name]="item.status==='FAILED'?'alert':'check'"/></span><div><strong>{{label(item.status)}}</strong><p>{{item.description}}</p><time>{{item.created_at|date:'dd/MM/yyyy · HH:mm:ss'}}</time></div></li>}</ol><h3 class="section-title">Tentativas</h3>@for(attempt of detail().attempts;track attempt.id){<div class="attempt-card"><strong>Tentativa {{attempt.attempt_number}}</strong><span class="chip" [ngClass]="statusClass(attempt.status)">{{label(attempt.status)}}</span><small>{{attempt.started_at|date:'dd/MM · HH:mm:ss'}}</small>@if(attempt.error_message){<p>{{attempt.error_message}}</p>}</div>}@empty{<p class="subtle">Nenhuma tentativa de envio realizada.</p>}}@else{<pre class="record-json">{{detail().record|json}}</pre>}</div><div class="drawer-footer"><button class="btn" (click)="detail.set(null)">Fechar</button>@if(detail().notification?.status==='FAILED'&&canOperate()){<button class="btn primary" [disabled]="saving()" (click)="retry()"><app-icon name="refresh"/>Reenviar</button>}</div></section>
-}
-@if(keyDialog()){
-  <div class="modal-backdrop" (click)="keyDialog.set(null);newKey.set('')"></div><section class="modal" role="dialog" aria-modal="true" aria-labelledby="keys-title"><div class="drawer-header"><div><span class="eyebrow">{{keyDialog().name}}</span><h2 id="keys-title">Chaves de API</h2></div><button class="icon-button" aria-label="Fechar" (click)="keyDialog.set(null);newKey.set('')"><app-icon name="close"/></button></div><div class="drawer-body"><p class="subtle">Cada aplicação publica eventos usando sua própria chave. O valor completo aparece apenas ao criar.</p>@if(newKey()){<div class="secret-box"><strong>Salve sua chave agora</strong><code>{{newKey()}}</code><button class="btn small" (click)="copyKey()"><app-icon name="copy"/>Copiar chave</button></div>}@for(key of keys();track key.id){<div class="key-row"><div><code>{{key.prefix}}••••••</code><small>{{key.last_used_at?'Último uso: '+(key.last_used_at|date:'dd/MM HH:mm'):'Ainda não utilizada'}}</small></div><span class="chip" [ngClass]="statusClass(key.status)">{{label(key.status)}}</span>@if(key.status==='ACTIVE'){<button class="text-button red-text" (click)="revokeKey(key.id)">Revogar</button>}</div>}@if(error()){<div class="error">{{error()}}</div>}</div><div class="drawer-footer"><button class="btn" [disabled]="saving()" (click)="createKey(true)">Rotacionar chaves</button><button class="btn primary" [disabled]="saving()" (click)="createKey()"><app-icon name="plus"/>Criar chave</button></div></section>
-}
-@if(toast()){<div class="toast" role="status"><app-icon name="check"/>{{toast()}}</div>}

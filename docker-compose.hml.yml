@@ -18,7 +18,7 @@ services:
     mem_limit: 768m
     cpus: 1.5
     security_opt: ["no-new-privileges:true"]
-    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
   frontend:
     image: ${REGISTRY}/mibess-notify-frontend:${IMAGE_TAG:?immutable commit required}
     container_name: mibess-notify-frontend-hml
@@ -29,9 +29,9 @@ services:
     mem_limit: 96m
     cpus: 0.5
     security_opt: ["no-new-privileges:true"]
-    logging: {driver: json-file, options: {max-size: 10m, max-file: "3"}}
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
 networks:
   app:
-  shared-db-network: {external: true}
-  notify-broker: {external: true}
-  notify-edge: {external: true}
+  shared-db-network: { external: true }
+  notify-broker: { external: true }
+  notify-edge: { external: true }

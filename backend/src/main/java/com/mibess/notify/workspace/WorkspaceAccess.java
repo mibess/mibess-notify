@@ -9,11 +9,26 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class WorkspaceAccess {
-    private final JdbcClient db;
-    public WorkspaceAccess(JdbcClient db) { this.db=db; }
-    public UUID id() {
-        String email=actor();
-        return db.sql("SELECT m.workspace_id FROM workspace_memberships m JOIN users u ON u.id=m.user_id WHERE u.email=:email AND u.enabled ORDER BY m.workspace_id LIMIT 1").param("email",email).query(UUID.class).optional().orElseThrow(()->new ResponseStatusException(HttpStatus.FORBIDDEN));
-    }
-    public String actor() { return SecurityContextHolder.getContext().getAuthentication().getName(); }
+
+  private final JdbcClient db;
+
+  public WorkspaceAccess(JdbcClient db) {
+    this.db = db;
+  }
+
+  public UUID id() {
+    String email = actor();
+    return db
+      .sql(
+        "SELECT m.workspace_id FROM workspace_memberships m JOIN users u ON u.id=m.user_id WHERE u.email=:email AND u.enabled ORDER BY m.workspace_id LIMIT 1"
+      )
+      .param("email", email)
+      .query(UUID.class)
+      .optional()
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
+  }
+
+  public String actor() {
+    return SecurityContextHolder.getContext().getAuthentication().getName();
+  }
 }

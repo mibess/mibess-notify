@@ -1,4 +1,6 @@
 package com.mibess.notify.event;
+
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-public interface EventRepository extends JpaRepository<EventEntity,UUID> {}
+
+public interface EventRepository extends JpaRepository<EventEntity, UUID> {}

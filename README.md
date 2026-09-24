@@ -4,6 +4,8 @@ Central de eventos e notificações do ecossistema Mibess. Aplicações publicam
 
 **Stack:** Java 25 LTS, Spring Boot 3.5.16, Spring Security/Data JPA, PostgreSQL/Flyway, RabbitMQ, Maven; Angular 21 LTS, TypeScript e TailwindCSS. Monólito modular, sem microserviços. Meta Graph API configurável (`v26.0` como padrão verificado em setembro de 2026).
 
+**Estado atual:** implementação e aceite local validados, imagens Docker construídas e CI aprovado. HML/PRD aguardam aprovação específica de provisionamento e acesso de deploy; entrega Meta real ainda não validada. Veja as [evidências](docs/VALIDATION.md) e o [estado do deploy](docs/DEPLOYMENT.md).
+
 ## Desenvolvimento
 
 Requisitos: Java 25, Node 24, Docker com Compose.

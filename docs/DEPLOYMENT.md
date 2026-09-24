@@ -39,7 +39,7 @@ Variables do repositório:
 | ECR_REGISTRY | Host do registry ECR existente, sem protocolo |
 | HOSTINGER_HOST | Host SSH da VPS |
 | HOSTINGER_USER | Usuário de deploy |
-| DEPLOY_ENABLED | `true` somente após provisionamento aprovado e validação HML; ausente mantém CI ativo e deploy bloqueado |
+| DEPLOY_ENABLED | `true` somente após provisionamento e acesso de deploy aprovados/configurados; ausente mantém CI ativo e deploy bloqueado |
 
 Secrets:
 
@@ -49,6 +49,8 @@ Secrets:
 | HOSTINGER_KNOWN_HOSTS | Chave pública verificada do host, com StrictHostKeyChecking |
 
 Secrets de runtime são mantidos **no host**, fora do repositório e do build, em `/opt/mibess-notify/secrets/{hml,prd}.env`: DB_PASSWORD, RABBITMQ_PASSWORD, MASTER_ENCRYPTION_KEY, ADMIN_EMAIL e ADMIN_PASSWORD de bootstrap. `broker.env` contém a credencial administrativa exclusiva do broker. Eles não precisam transitar por Actions. Credenciais Meta entram pelo painel e são criptografadas no banco.
+
+Após habilitar deploy, execute primeiro o workflow de HML na branch develop e conclua seu aceite. Só então dispare o workflow de PRD na main. Novos pushes nessas branches passam a disparar seus respectivos deploys automaticamente.
 
 ## Deploy e rollback
 
