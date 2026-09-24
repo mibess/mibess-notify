@@ -93,6 +93,73 @@ class IntegrationTest {
   UUID app, channel, contact, group, template;
   String key;
 
+  @Test
+  void evolutionWebhookRequiresChannelTokenAndMatchingInstance()
+    throws Exception {
+    var crypto = new Crypto("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+    var spec = json
+      .object()
+      .put("provider", "WHATSAPP_EVOLUTION")
+      .put("instanceName", "TEST_EVOLUTION");
+    spec.put(
+      "encryptedCredentials",
+      crypto.encrypt(
+        "{\"apiKey\":\"test-key\",\"webhookToken\":\"test-webhook-token\"}",
+        Bootstrap.WORKSPACE + ":" + channel
+      )
+    );
+    store.save(
+      Kind.CHANNELS,
+      Bootstrap.WORKSPACE,
+      channel,
+      "EVO_" + channel.toString().substring(0, 8),
+      "Evolution test",
+      true,
+      spec
+    );
+    String url = "/webhooks/evolution/whatsapp/" + channel;
+    String body =
+      "{\"event\":\"messages.update\",\"instance\":\"TEST_EVOLUTION\",\"apikey\":\"must-not-persist\",\"data\":{\"keyId\":\"unknown-evolution-id\",\"fromMe\":true,\"status\":\"DELIVERY_ACK\"}}";
+    mvc
+      .perform(post(url).contentType("application/json").content(body))
+      .andExpect(status().isUnauthorized());
+    mvc
+      .perform(
+        post(url)
+          .header("X-Notify-Webhook-Token", "wrong")
+          .contentType("application/json")
+          .content(body)
+      )
+      .andExpect(status().isUnauthorized());
+    mvc
+      .perform(
+        post(url)
+          .header("X-Notify-Webhook-Token", "test-webhook-token")
+          .contentType("application/json")
+          .content(body.replace("TEST_EVOLUTION", "OTHER"))
+      )
+      .andExpect(status().isBadRequest());
+    for (int i = 0; i < 2; i++) mvc
+      .perform(
+        post(url)
+          .header("X-Notify-Webhook-Token", "test-webhook-token")
+          .contentType("application/json")
+          .content(body)
+      )
+      .andExpect(status().isOk());
+    var receipts = db
+      .sql(
+        "SELECT payload::text FROM webhook_receipts WHERE channel_connection_id=:id"
+      )
+      .param("id", channel)
+      .query(String.class)
+      .list();
+    assertThat(receipts).hasSize(1);
+    assertThat(receipts.getFirst())
+      .contains("delivered")
+      .doesNotContain("apikey", "must-not-persist");
+  }
+
   @BeforeEach
   void fixture() {
     String suffix = UUID.randomUUID().toString().substring(0, 8);

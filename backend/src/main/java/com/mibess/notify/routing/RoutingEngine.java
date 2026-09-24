@@ -77,6 +77,7 @@ public class RoutingEngine {
         String state = "PENDING",
           error = null;
         List<String> parameters = List.of();
+        String text = "";
         if (!channel.enabled() || !template.enabled()) {
           state = "CANCELLED";
           error = "CONFIGURATION_DISABLED";
@@ -94,6 +95,7 @@ public class RoutingEngine {
         } else {
           try {
             parameters = TemplateRenderer.parameters(template.spec(), payload);
+            text = TemplateRenderer.render(template.spec(), payload);
           } catch (IllegalArgumentException e) {
             state = "FAILED";
             error = "MISSING_TEMPLATE_VARIABLE";
@@ -106,6 +108,7 @@ public class RoutingEngine {
         );
         command.put("language", template.spec().path("language").asText());
         command.set("parameters", json.tree(parameters));
+        command.put("text", text);
         command.set("consent", recipient.consent());
         command.put("correlationId", event.get("correlation_id").toString());
         UUID id = UUID.randomUUID();

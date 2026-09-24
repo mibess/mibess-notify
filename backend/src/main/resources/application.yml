@@ -70,6 +70,7 @@ notify:
   admin-password: ${ADMIN_PASSWORD:}
   environment: ${NOTIFY_ENV:dev}
   fake-provider: ${FAKE_PROVIDER_ENABLED:false}
+  evolution-url: ${EVOLUTION_API_URL:}
   graph-version: ${META_GRAPH_VERSION:v26.0}
   rate-limit: ${EVENTS_PER_MINUTE:120}
   retry-delays: ${RETRY_DELAYS_SECONDS:60,300,900,3600}

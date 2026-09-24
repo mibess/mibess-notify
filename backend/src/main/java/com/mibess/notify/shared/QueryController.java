@@ -216,6 +216,10 @@ public class QueryController {
         com.mibess.notify.template.TemplateRenderer.parameters(spec, payload)
       )
     );
+    command.put(
+      "text",
+      com.mibess.notify.template.TemplateRenderer.render(spec, payload)
+    );
     command.put("templateName", spec.path("providerTemplateName").asText());
     command.put("language", spec.path("language").asText());
     db.sql(

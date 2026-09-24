@@ -38,7 +38,7 @@ O primeiro boot cria workspace Mibess, usuário ADMIN com a senha externa, aplic
 
 1. Entre no painel, abra Aplicações → ARTGIAN → Chaves de API. Copie a chave exibida uma única vez. Rotação revoga as anteriores; revogação individual também está disponível.
 2. Cadastre contatos, com telefone E.164 e evidência de consentimento. Adicione os contatos ao grupo ARTGIAN_OPERATIONS.
-3. Em Canais, configure MIBESS_NOTIFY com as credenciais da Cloud API oficial. Ative somente quando o número e o app Meta estiverem configurados.
+3. Em Canais, configure MIBESS_NOTIFY com Meta Cloud API ou Evolution API temporária. Para Evolution, informe a instância e as credenciais, e configure EVOLUTION_API_URL no servidor; veja docs/EVOLUTION.md.
 4. Configure o template `internal_new_order` com o nome/idioma e parâmetros na ordem aprovada pela Meta. Alterar o status local não aprova o template na Meta.
 5. Ative a regra ARTGIAN + ORDER_PAID → grupo → MIBESS_NOTIFY → template.
 6. Publique um evento. Acompanhe Eventos → Notificações → Timeline.
@@ -79,7 +79,7 @@ Os testes de integração exigem Docker e usam PostgreSQL/RabbitMQ reais via Tes
 - Mesma origem para frontend/API, sem CORS permissivo. Segredos de canal usam AES-256-GCM com contexto de workspace/canal.
 - Swagger é autenticado e desabilitado por padrão em PRD. Health público divulga apenas UP/DOWN; demais endpoints Actuator são restritos. Proxy bloqueia endpoints Actuator além de `/actuator/health`.
 - Payload bruto de webhook processado é reduzido após 24h, preservando recibo e metadados. Eventos e histórico não são apagados automaticamente. Defina política organizacional de retenção antes de armazenar dados sensíveis; publique apenas os dados necessários.
-- Nenhum provider não oficial, WhatsApp Web, QR code, chatbot ou campanha foi implementado.
+- Evolution API disponível como alternativa temporária autorizada pelo usuário, com conexão do número pelo Manager existente. Chatbots e campanhas não fazem parte do Notify.
 
 Documentação: [arquitetura](ARCHITECTURE.md), [infraestrutura](docs/INFRASTRUCTURE.md), [deploy/rollback](docs/DEPLOYMENT.md), [Meta](docs/META.md), [contrato HTTP](docs/API.md), [status de implementação](IMPLEMENTATION_PLAN.md).
 

@@ -1,6 +1,6 @@
 # WhatsApp oficial
 
-Integração exclusivamente com WhatsApp Business Platform / Cloud API, usando templates. Não utiliza a Evolution API existente na VPS nem simula WhatsApp Web.
+A integração oficial com WhatsApp Business Platform / Cloud API continua disponível. Em 24/09/2026, o usuário autorizou a Evolution API como provedor temporário enquanto resolve o cadastro Meta. Consulte [Evolution](EVOLUTION.md).
 
 ## Fontes verificadas
 
@@ -23,7 +23,7 @@ O canal registra que a conta está configurada para coexistência, mas não ativ
 
 ## Consentimento
 
-Data, fonte e opt-in são obrigatórios. Opt-out e suppression impedem novos envios e são reavaliados imediatamente antes da chamada externa. Templates, categorias, janela de atendimento e políticas Meta continuam sendo responsabilidades da configuração da conta. O sistema não envia texto livre fora de templates.
+Data, fonte e opt-in são obrigatórios. Opt-out e suppression impedem novos envios e são reavaliados imediatamente antes da chamada externa. Templates, categorias, janela de atendimento e políticas Meta continuam sendo responsabilidades da configuração da conta. O provedor Meta envia exclusivamente templates oficiais. O provedor Evolution renderiza o corpo dos templates locais aprovados antes de enviar texto.
 
 ## Pendências externas
 

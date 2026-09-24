@@ -20,6 +20,18 @@ public final class TemplateRenderer {
     return List.copyOf(names);
   }
 
+  public static String render(JsonNode spec, JsonNode payload) {
+    List<String> values = parameters(spec, payload);
+    Map<String, String> replacements = new HashMap<>();
+    int index = 0;
+    for (JsonNode variable : spec.path("variables"))
+      replacements.put(variable.asText(), values.get(index++));
+    var matcher = PLACEHOLDER.matcher(spec.path("body").asText());
+    return matcher.replaceAll(match ->
+      Matcher.quoteReplacement(replacements.get(match.group(1)))
+    );
+  }
+
   public static List<String> parameters(JsonNode spec, JsonNode payload) {
     List<String> result = new ArrayList<>();
     for (JsonNode variable : spec.path("variables")) {

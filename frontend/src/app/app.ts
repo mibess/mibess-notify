@@ -95,7 +95,19 @@ const FIELDS: Record<string, Field[]> = {
     },
   ],
   channels: [
-    SELECT("provider", "Provider", ["WHATSAPP_META"]),
+    SELECT("provider", "Provedor", ["WHATSAPP_META", "WHATSAPP_EVOLUTION"]),
+    { key: "instanceName", label: "Instância Evolution", required: true },
+    {
+      key: "apiKey",
+      label: "Chave da instância Evolution",
+      type: "password",
+      hint: "Deixe vazio para preservar a chave atual.",
+    },
+    {
+      key: "webhookToken",
+      label: "Token de autenticação do webhook",
+      type: "password",
+    },
     { key: "phoneNumberId", label: "Phone Number ID" },
     { key: "businessAccountId", label: "WhatsApp Business Account ID" },
     {
@@ -129,7 +141,7 @@ const FIELDS: Record<string, Field[]> = {
     REF("channelConnectionId", "Identidade remetente", "channels"),
     {
       key: "providerTemplateName",
-      label: "Nome do template na Meta",
+      label: "Nome de referência do template",
       required: true,
     },
     { key: "providerTemplateId", label: "ID do template na Meta" },
@@ -419,7 +431,16 @@ export class AppComponent {
     );
   }
   get fields() {
-    return FIELDS[this.page()] || [];
+    const fields = FIELDS[this.page()] || [];
+    if (this.page() !== "channels") return fields;
+    const evolution = ["instanceName", "apiKey", "webhookToken"];
+    return fields.filter(
+      (f) =>
+        f.key === "provider" ||
+        (this.form.spec.provider === "WHATSAPP_EVOLUTION"
+          ? evolution.includes(f.key)
+          : !evolution.includes(f.key)),
+    );
   }
   choices(field: Field) {
     let ref = field.ref;
@@ -490,7 +511,13 @@ export class AppComponent {
           body.spec[key] = new Date(body.spec[key]).toISOString();
       if (this.page() === "channels") {
         const credentials: Record<string, string> = {};
-        for (const key of ["accessToken", "appSecret", "verifyToken"]) {
+        for (const key of [
+          "accessToken",
+          "appSecret",
+          "verifyToken",
+          "apiKey",
+          "webhookToken",
+        ]) {
           if (body.spec[key]) credentials[key] = body.spec[key];
           delete body.spec[key];
         }

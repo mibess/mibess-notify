@@ -444,7 +444,9 @@
                     >{{row.spec.providerTemplateName}}</span
                   ><small class="cell-sub"
                     >{{row.spec.language}} · {{label(row.spec.status)}}</small
-                  >}@case('channels'){<span>WhatsApp · Meta Cloud API</span
+                  >}@case('channels'){<span
+                    >WhatsApp · {{row.spec.provider === 'WHATSAPP_EVOLUTION' ?
+                    'Evolution API' : 'Meta Cloud API'}}</span
                   ><small class="cell-sub"
                     >{{row.spec.credentialsConfigured?'Credenciais
                     configuradas':'Aguardando configuração'}}</small

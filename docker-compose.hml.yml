@@ -4,6 +4,7 @@ services:
     image: ${REGISTRY}/mibess-notify-backend:${IMAGE_TAG:?immutable commit required}
     container_name: mibess-notify-backend-hml
     restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]
     env_file: /opt/mibess-notify/secrets/hml.env
     environment:
       NOTIFY_ENV: hml

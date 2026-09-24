@@ -59,7 +59,11 @@ public class SecurityConfiguration {
         c
           .csrfTokenRepository(csrf)
           .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-          .ignoringRequestMatchers("/api/v1/events", "/webhooks/meta/whatsapp")
+          .ignoringRequestMatchers(
+            "/api/v1/events",
+            "/webhooks/meta/whatsapp",
+            "/webhooks/evolution/whatsapp/*"
+          )
       )
       .authorizeHttpRequests(a ->
         a
@@ -69,7 +73,8 @@ public class SecurityConfiguration {
             "/actuator/health",
             "/actuator/health/liveness",
             "/actuator/health/readiness",
-            "/webhooks/meta/whatsapp"
+            "/webhooks/meta/whatsapp",
+            "/webhooks/evolution/whatsapp/*"
           )
           .permitAll()
           .requestMatchers(HttpMethod.POST, "/api/v1/events")

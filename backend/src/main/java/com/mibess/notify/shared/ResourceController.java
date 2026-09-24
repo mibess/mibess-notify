@@ -113,6 +113,7 @@ public class ResourceController {
         "messagingAccountId",
         "graphApiVersion",
         "coexistence",
+        "instanceName",
         "credentials"
       );
       case TEMPLATES -> Set.of(
@@ -167,20 +168,33 @@ public class ResourceController {
         oneOf(
           spec,
           "provider",
-          fake ? Set.of("WHATSAPP_META", "FAKE") : Set.of("WHATSAPP_META")
+          fake
+            ? Set.of("WHATSAPP_META", "WHATSAPP_EVOLUTION", "FAKE")
+            : Set.of("WHATSAPP_META", "WHATSAPP_EVOLUTION")
         );
         if (
           spec.path("provider").asText().equals("WHATSAPP_META") &&
           input.enabled() &&
           !spec.path("phoneNumberId").asText().matches("[0-9]+")
         ) throw new IllegalArgumentException("Phone Number ID obrigatório");
+        if (
+          spec.path("provider").asText().equals("WHATSAPP_EVOLUTION") &&
+          !spec.path("instanceName").asText().matches("[A-Za-z0-9_-]{1,100}")
+        ) throw new IllegalArgumentException(
+          "Nome da instância Evolution inválido"
+        );
         JsonNode credentials = spec.remove("credentials");
         if (
           credentials != null &&
           credentials.isObject() &&
           !credentials.isEmpty()
         ) {
-          for (String key : List.of("accessToken", "appSecret", "verifyToken"))
+          for (String key : spec
+            .path("provider")
+            .asText()
+            .equals("WHATSAPP_EVOLUTION")
+            ? List.of("apiKey", "webhookToken")
+            : List.of("accessToken", "appSecret", "verifyToken"))
             if (
               credentials.path(key).asText().isBlank()
             ) throw new IllegalArgumentException(
@@ -191,14 +205,16 @@ public class ResourceController {
             crypto.encrypt(json.write(credentials), w + ":" + id)
           );
         } else if (
-          old != null && old.spec().has("encryptedCredentials")
+          old != null &&
+          old.spec().path("provider").equals(spec.path("provider")) &&
+          old.spec().has("encryptedCredentials")
         ) spec.set(
           "encryptedCredentials",
           old.spec().get("encryptedCredentials")
         );
         if (
           input.enabled() &&
-          spec.path("provider").asText().equals("WHATSAPP_META") &&
+          !spec.path("provider").asText().equals("FAKE") &&
           !spec.has("encryptedCredentials")
         ) throw new IllegalArgumentException(
           "Configure as credenciais antes de ativar"
