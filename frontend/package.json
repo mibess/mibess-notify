@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "ng serve --host 127.0.0.1 --proxy-config proxy.conf.json",
-    "build": "ng build",
+    "build": "ng build && node scripts/verify-build.mjs",
     "test": "ng test --watch=false",
     "format": "prettier --plugin=prettier-plugin-java --write \"src/**/*.{ts,html,css}\" \"../backend/src/**/*.java\" \"*.json\" \"../.github/workflows/*.yml\""
   },
