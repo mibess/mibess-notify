@@ -45,3 +45,12 @@ Entrega real Meta e exercício de rollback sob falha induzida ainda não foram e
 - Health UP em ambos os domínios; migrations V1/V2 aplicadas com sucesso. Filas de eventos, entregas e webhooks com consumidores ativos; DLQ vazia. PRD confirmou `NOTIFY_ENV=prd` e `FAKE_PROVIDER_ENABLED=false`.
 - Backups anteriores à atualização: HML 63.984 bytes e PRD 58.770 bytes. Release anterior `75db89e0d8727248833840538e458df391c3bdf7` registrada para rollback de imagem. Restauração sob falha induzida não foi exercitada.
 - Os IDs dos 12 containers preexistentes permaneceram iguais. Verificação de logs dos backends sem WARN/ERROR no intervalo consultado. Nenhum valor secreto publicado.
+
+## Envios manuais — 24/09/2026
+
+- Versão `587300fb0233af46886a96ae79440ec9dcb62cbf`: **22 testes de backend e 6 de frontend passaram**, com build de produção e verificação CSP aprovados.
+- Cobertura: prévia sem envio, confirmação com conteúdo validado, idempotência, permissões/CSRF, consentimento/supressão, alteração de cadastro após revisão, parâmetros de template, retry preservando conteúdo e cancelamento antes da entrega quando contato/template muda.
+- Navegador local: contato → texto → revisão → confirmação com provider FAKE → histórico SENT, autor e mensagem registrados, uma tentativa. Layout móvel sem overflow horizontal; tamanho padrão restaurado. Fixtures locais desativadas depois do teste.
+- [HML aprovada](https://github.com/mibess/mibess-notify/actions/runs/35952815011). Aceite no domínio público: prévia sem criar notificação, repetição idempotente e conflito com conteúdo alterado, fila SENT e webhook simulado DELIVERED. Notificação `7d7a56f7-2070-4b94-b8b0-360fd8bd7900`, uma tentativa. Canal/contato de teste desativados; nenhuma mensagem real enviada nesse aceite.
+- A migração V3 preserva os registros anteriores. A limitação de rollback após aceitar envios manuais está registrada em `DEPLOYMENT.md`.
+- [PRD aprovada](https://github.com/mibess/mibess-notify/actions/runs/35953270254), mesma versão de HML. Ambos os domínios retornaram health UP e serviram `main-POTWM5VG.js` com a nova funcionalidade. Login/CSRF e prévia manual com o canal Evolution de produção passaram; a consulta antes/depois confirmou zero notificações criadas. Nenhuma confirmação de envio real foi chamada nesta validação.
