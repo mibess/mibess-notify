@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   application:
     name: mibess-notify
   datasource:
@@ -44,8 +48,8 @@ server:
         secure: ${COOKIE_SECURE:true}
         same-site: strict
   tomcat:
-    max-http-form-post-size: 256KB
-    max-swallow-size: 256KB
+    max-http-form-post-size: 6MB
+    max-swallow-size: 6MB
 management:
   endpoints:
     web:
@@ -65,6 +69,13 @@ springdoc:
   swagger-ui:
     enabled: ${OPENAPI_ENABLED:false}
 notify:
+  images:
+    bucket: ${NOTIFY_IMAGES_BUCKET:}
+    region: ${AWS_REGION:us-east-1}
+    prefix: ${NOTIFY_IMAGES_PREFIX:mibess-notify/dev}
+    width: ${NOTIFY_IMAGES_WIDTH:960}
+    height: ${NOTIFY_IMAGES_HEIGHT:504}
+    max-bytes: ${NOTIFY_IMAGES_MAX_BYTES:500000}
   encryption-key: ${MASTER_ENCRYPTION_KEY}
   admin-email: ${ADMIN_EMAIL:admin@mibess.com.br}
   admin-password: ${ADMIN_PASSWORD:}

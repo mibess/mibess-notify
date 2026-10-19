@@ -15,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/admin")
 public class QueryController {
 
+  private final ResourceStore store;
+  private final com.mibess.notify.media.NotificationImages images;
   private final JdbcClient db;
   private final WorkspaceAccess access;
   private final Json json;
@@ -22,11 +24,15 @@ public class QueryController {
 
   public QueryController(
     JdbcClient db,
+    ResourceStore store,
+    com.mibess.notify.media.NotificationImages images,
     WorkspaceAccess access,
     Json json,
     AuditLog audit
   ) {
     this.db = db;
+    this.store = store;
+    this.images = images;
     this.access = access;
     this.json = json;
     this.audit = audit;
@@ -143,6 +149,8 @@ public class QueryController {
     return Map.of(
       "notification",
       safe(n),
+      "imageId",
+      json.read(n.get("command").toString()).path("imageId").asText(),
       "message",
       json.read(n.get("command").toString()).path("text").asText(),
       "timeline",
@@ -173,7 +181,7 @@ public class QueryController {
   ) {
     var n = db
       .sql(
-        "SELECT status,error_code,template_id,event_id,command,source FROM notifications WHERE id=:id AND workspace_id=:w FOR UPDATE"
+        "SELECT status,error_code,template_id,event_id,command,source,application_id,channel_connection_id FROM notifications WHERE id=:id AND workspace_id=:w FOR UPDATE"
       )
       .param("id", id)
       .param("w", access.id())
@@ -233,6 +241,30 @@ public class QueryController {
       );
       command.put("templateName", spec.path("providerTemplateName").asText());
       command.put("language", spec.path("language").asText());
+      command.remove("imageId");
+      var template = store.get(
+        ResourceStore.Kind.TEMPLATES,
+        access.id(),
+        (UUID) n.get("template_id")
+      );
+      var application = store.get(
+        ResourceStore.Kind.APPLICATIONS,
+        access.id(),
+        (UUID) n.get("application_id")
+      );
+      var channel = store.get(
+        ResourceStore.Kind.CHANNELS,
+        access.id(),
+        (UUID) n.get("channel_connection_id")
+      );
+      images.attach(
+        command,
+        access.id(),
+        template,
+        application,
+        channel.spec().path("provider").asText(),
+        null
+      );
     }
     db.sql(
       "UPDATE notifications SET status='PENDING',available_at=now(),retry_count=0,error_code=NULL,command=CAST(:command AS jsonb) WHERE id=:id"

@@ -29,6 +29,7 @@ public class ManualNotificationController {
     @NotNull UUID contactId,
     @NotNull UUID channelConnectionId,
     UUID templateId,
+    UUID imageId,
     @Size(max = 4096) String text,
     @Size(max = 50)
     Map<@Size(max = 150) String, @NotBlank @Size(max = 4096) String> variables,
@@ -42,7 +43,8 @@ public class ManualNotificationController {
     String channelName,
     String provider,
     String text,
-    String templateName
+    String templateName,
+    UUID imageId
   ) {}
 
   public record Accepted(
@@ -61,6 +63,7 @@ public class ManualNotificationController {
   private static final Pattern VARIABLE = Pattern.compile(
     "\\{\\{\\s*([a-zA-Z][a-zA-Z0-9_.]*)\\s*}}"
   );
+  private final com.mibess.notify.media.NotificationImages images;
   private final JdbcClient db;
   private final ResourceStore store;
   private final WorkspaceAccess access;
@@ -71,6 +74,7 @@ public class ManualNotificationController {
 
   public ManualNotificationController(
     JdbcClient db,
+    com.mibess.notify.media.NotificationImages images,
     ResourceStore store,
     WorkspaceAccess access,
     ConsentService consent,
@@ -79,6 +83,7 @@ public class ManualNotificationController {
     AuditLog audit
   ) {
     this.db = db;
+    this.images = images;
     this.store = store;
     this.access = access;
     this.consent = consent;
@@ -205,6 +210,10 @@ public class ManualNotificationController {
       "templateId",
       input.templateId() == null ? "" : input.templateId().toString()
     );
+    if (input.imageId() != null) body.put(
+      "imageId",
+      input.imageId().toString()
+    );
     body.put("text", input.text() == null ? "" : input.text());
     body.set(
       "variables",
@@ -319,6 +328,16 @@ public class ManualNotificationController {
       "Escreva uma mensagem de 1 a 4096 caracteres."
     );
     command.put("text", text);
+    images.attach(
+      command,
+      workspace,
+      input.templateId() == null
+        ? null
+        : store.get(Kind.TEMPLATES, workspace, input.templateId()),
+      null,
+      provider,
+      input.imageId()
+    );
     String previewHash = Crypto.hash(
       json.write(command) +
         ":" +
@@ -339,7 +358,10 @@ public class ManualNotificationController {
         channel.name(),
         provider,
         text,
-        templateName
+        templateName,
+        command.hasNonNull("imageId")
+          ? UUID.fromString(command.path("imageId").asText())
+          : null
       )
     );
   }

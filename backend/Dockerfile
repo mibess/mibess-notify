@@ -5,6 +5,7 @@ RUN mvn -B -ntp dependency:go-offline
 COPY src src
 RUN mvn -B -ntp package -DskipTests
 FROM eclipse-temurin:25-jre
+RUN apt-get update && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 RUN groupadd -g 10001 notify && useradd -u 10001 -g notify -M -s /usr/sbin/nologin notify
 WORKDIR /app
 COPY --from=build --chown=notify:notify /build/target/notify-1.0.0.jar /app/notify.jar

@@ -120,31 +120,45 @@ public class WhatsAppEvolutionProvider implements ChannelProvider {
       false,
       0
     );
+    boolean image = !command.message().path("imageUrl").asText().isBlank();
+    if (image && text.length() > 1024) throw new DeliveryFailure(
+      "IMAGE_CAPTION_TOO_LONG",
+      false,
+      false,
+      0
+    );
+    var payload = json.object();
+    payload.put("number", command.recipient().replace("+", ""));
+    if (image) {
+      payload.put("mediatype", "image");
+      payload.put(
+        "mimetype",
+        command.message().path("imageContentType").asText()
+      );
+      payload.put("media", command.message().path("imageUrl").asText());
+      payload.put("caption", text);
+      payload.put(
+        "fileName",
+        command.message().path("imageContentType").asText().equals("image/png")
+          ? "notification.png"
+          : "notification.jpg"
+      );
+    } else {
+      payload.put("text", text);
+      payload.put("linkPreview", false);
+    }
     try {
       var request = HttpRequest.newBuilder(
         URI.create(
           baseUrl +
-            "/message/sendText/" +
+            (image ? "/message/sendMedia/" : "/message/sendText/") +
             c.spec().path("instanceName").asText()
         )
       )
         .timeout(Duration.ofSeconds(30))
         .header("apikey", credentials(c).path("apiKey").asText())
         .header("Content-Type", "application/json")
-        .POST(
-          HttpRequest.BodyPublishers.ofString(
-            json.write(
-              Map.of(
-                "number",
-                command.recipient().replace("+", ""),
-                "text",
-                text,
-                "linkPreview",
-                false
-              )
-            )
-          )
-        )
+        .POST(HttpRequest.BodyPublishers.ofString(json.write(payload)))
         .build();
       var response = http.send(request, HttpResponse.BodyHandlers.ofString());
       int status = response.statusCode();

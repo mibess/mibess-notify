@@ -52,6 +52,43 @@ public class WhatsAppMetaCloudProvider implements ChannelProvider {
     );
   }
 
+  public JsonNode templatePayload(JsonNode message) {
+    var template = json.object();
+    template.put("name", message.path("templateName").asText());
+    template.set(
+      "language",
+      json.tree(Map.of("code", message.path("language").asText()))
+    );
+    var components = json.object().putArray("components");
+    if (!message.path("imageUrl").asText().isBlank()) {
+      components.add(
+        json.tree(
+          Map.of(
+            "type",
+            "header",
+            "parameters",
+            List.of(
+              Map.of(
+                "type",
+                "image",
+                "image",
+                Map.of("link", message.path("imageUrl").asText())
+              )
+            )
+          )
+        )
+      );
+    }
+    List<Map<String, String>> parameters = new ArrayList<>();
+    for (JsonNode parameter : message.path("parameters"))
+      parameters.add(Map.of("type", "text", "text", parameter.asText()));
+    if (!parameters.isEmpty()) components.add(
+      json.tree(Map.of("type", "body", "parameters", parameters))
+    );
+    if (!components.isEmpty()) template.set("components", components);
+    return template;
+  }
+
   public Result send(SendCommand command) {
     var c = command.connection();
     if (!validateConfiguration(c)) throw new DeliveryFailure(
@@ -67,19 +104,7 @@ public class WhatsAppMetaCloudProvider implements ChannelProvider {
       false,
       0
     );
-    List<Map<String, String>> parameters = new ArrayList<>();
-    for (JsonNode parameter : command.message().path("parameters"))
-      parameters.add(Map.of("type", "text", "text", parameter.asText()));
-    var template = json.object();
-    template.put("name", command.message().path("templateName").asText());
-    template.set(
-      "language",
-      json.tree(Map.of("code", command.message().path("language").asText()))
-    );
-    if (!parameters.isEmpty()) template.set(
-      "components",
-      json.tree(List.of(Map.of("type", "body", "parameters", parameters)))
-    );
+    var template = templatePayload(command.message());
     var body = json.object();
     body.put("messaging_product", "whatsapp");
     body.put("recipient_type", "individual");

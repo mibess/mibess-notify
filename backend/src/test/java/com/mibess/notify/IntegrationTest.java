@@ -90,6 +90,9 @@ class IntegrationTest {
   @MockitoSpyBean
   FakeProvider fake;
 
+  @org.springframework.test.context.bean.override.mockito.MockitoBean
+  com.mibess.notify.media.ImageStorage imageStorage;
+
   UUID app, channel, contact, group, template;
   String key;
 
@@ -482,6 +485,227 @@ class IntegrationTest {
         .query(String.class)
         .single()
     ).isEqualTo("CANCELLED");
+  }
+
+  private UUID uploadImage() throws Exception {
+    byte[] bytes = com.mibess.notify.media.StandardImage.create(
+      "Artgian",
+      960,
+      504
+    );
+    var result = mvc
+      .perform(
+        multipart("/api/v1/admin/images")
+          .file(
+            new org.springframework.mock.web.MockMultipartFile(
+              "file",
+              "identity.jpg",
+              "image/jpeg",
+              bytes
+            )
+          )
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.width").value(960))
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    return UUID.fromString(json.read(result).path("id").asText());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void imageUploadsRequireRoleCsrfRealDimensionsAndWorkspaceOwnership()
+    throws Exception {
+    byte[] bytes = com.mibess.notify.media.StandardImage.create(
+      "Artgian",
+      960,
+      504
+    );
+    var file = new org.springframework.mock.web.MockMultipartFile(
+      "file",
+      "identity.jpg",
+      "image/jpeg",
+      bytes
+    );
+    mvc
+      .perform(
+        multipart("/api/v1/admin/images")
+          .file(file)
+          .with(user("admin@mibess.com.br").roles("VIEWER"))
+          .with(csrf())
+      )
+      .andExpect(status().isForbidden());
+    mvc
+      .perform(
+        multipart("/api/v1/admin/images")
+          .file(file)
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+      )
+      .andExpect(status().isForbidden());
+    mvc
+      .perform(
+        multipart("/api/v1/admin/images")
+          .file(
+            new org.springframework.mock.web.MockMultipartFile(
+              "file",
+              "wrong.jpg",
+              "image/jpeg",
+              com.mibess.notify.media.StandardImage.create("Artgian", 400, 400)
+            )
+          )
+          .with(user("admin@mibess.com.br").roles("OPERATOR"))
+          .with(csrf())
+      )
+      .andExpect(status().isBadRequest())
+      .andExpect(
+        jsonPath("$.detail").value(
+          org.hamcrest.Matchers.containsString("960 × 504")
+        )
+      );
+    UUID image = uploadImage();
+    when(imageStorage.read(anyString())).thenReturn(bytes);
+    mvc
+      .perform(
+        get("/api/v1/admin/images/" + image + "/content").with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(content().bytes(bytes))
+      .andExpect(header().string("Cache-Control", "no-store"));
+    UUID foreign = UUID.randomUUID();
+    db.sql(
+      "INSERT INTO workspaces(id,name) VALUES(:id,'Other image workspace')"
+    )
+      .param("id", foreign)
+      .update();
+    db.sql("UPDATE notification_images SET workspace_id=:w WHERE id=:id")
+      .param("w", foreign)
+      .param("id", image)
+      .update();
+    mvc
+      .perform(
+        get("/api/v1/admin/images/" + image + "/content").with(
+          user("admin@mibess.com.br").roles("ADMIN")
+        )
+      )
+      .andExpect(status().isNotFound());
+    var application = store.get(Kind.APPLICATIONS, Bootstrap.WORKSPACE, app);
+    mvc
+      .perform(
+        put("/api/v1/admin/applications/" + app)
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(
+            json.write(
+              Map.of(
+                "code",
+                application.code(),
+                "name",
+                application.name(),
+                "enabled",
+                true,
+                "spec",
+                Map.of("imageId", image)
+              )
+            )
+          )
+      )
+      .andExpect(status().isNotFound());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void manualImageIsReviewedAndCannotBeSwappedAfterConfirmation()
+    throws Exception {
+    UUID image = uploadImage();
+    var input = manualInput().put("imageId", image.toString());
+    var reviewed = reviewManual(input);
+    UUID notification = sendManual(reviewed);
+    var command = json.read(
+      db
+        .sql("SELECT command::text FROM notifications WHERE id=:id")
+        .param("id", notification)
+        .query(String.class)
+        .single()
+    );
+    assertThat(command.path("imageId").asText()).isEqualTo(image.toString());
+    assertThat(command.has("imageUrl")).isFalse();
+    reviewed.put("imageId", uploadImage().toString());
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(reviewed))
+      )
+      .andExpect(status().isConflict());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void routedNotificationsFreezeTheApplicationsImageAndRetryCanUseNewConfiguration()
+    throws Exception {
+    UUID image = uploadImage();
+    var application = store.get(Kind.APPLICATIONS, Bootstrap.WORKSPACE, app);
+    store.save(
+      Kind.APPLICATIONS,
+      Bootstrap.WORKSPACE,
+      app,
+      application.code(),
+      application.name(),
+      true,
+      json.object().put("imageId", image.toString())
+    );
+    UUID event = localEvent("ORDER_PAID", "{\"orderNumber\":\"image-order\"}");
+    routingEngine.route(event.toString());
+    var row = db
+      .sql("SELECT id,command::text FROM notifications WHERE event_id=:id")
+      .param("id", event)
+      .query()
+      .singleRow();
+    assertThat(
+      json.read(row.get("command").toString()).path("imageId").asText()
+    ).isEqualTo(image.toString());
+    UUID replacement = uploadImage();
+    store.save(
+      Kind.APPLICATIONS,
+      Bootstrap.WORKSPACE,
+      app,
+      application.code(),
+      application.name(),
+      true,
+      json.object().put("imageId", replacement.toString())
+    );
+    db.sql(
+      "UPDATE notifications SET status='FAILED',error_code='IMAGE_STORAGE_UNAVAILABLE' WHERE id=:id"
+    )
+      .param("id", row.get("id"))
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/" + row.get("id") + "/retry")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk());
+    assertThat(
+      json
+        .read(
+          db
+            .sql("SELECT command::text FROM notifications WHERE id=:id")
+            .param("id", row.get("id"))
+            .query(String.class)
+            .single()
+        )
+        .path("imageId")
+        .asText()
+    ).isEqualTo(replacement.toString());
   }
 
   @BeforeEach

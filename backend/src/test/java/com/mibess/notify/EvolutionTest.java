@@ -129,6 +129,83 @@ class EvolutionTest {
   }
 
   @Test
+  void sendsImageAndCaptionInOneRequest() throws Exception {
+    var received = new AtomicReference<String>();
+    var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/message/sendMedia/TEST", exchange -> {
+      received.set(
+        new String(
+          exchange.getRequestBody().readAllBytes(),
+          StandardCharsets.UTF_8
+        )
+      );
+      byte[] response = "{\"key\":{\"id\":\"image-1\"}}".getBytes(
+        StandardCharsets.UTF_8
+      );
+      exchange.sendResponseHeaders(201, response.length);
+      exchange.getResponseBody().write(response);
+      exchange.close();
+    });
+    server.start();
+    try {
+      UUID id = UUID.randomUUID(),
+        w = UUID.randomUUID();
+      var channel = new Resource(
+        id,
+        w,
+        "TEST",
+        "Teste",
+        true,
+        json
+          .object()
+          .put("instanceName", "TEST")
+          .put(
+            "encryptedCredentials",
+            crypto.encrypt(
+              "{\"apiKey\":\"key\",\"webhookToken\":\"token\"}",
+              w + ":" + id
+            )
+          ),
+        "",
+        ""
+      );
+      var provider = new WhatsAppEvolutionProvider(
+        json,
+        crypto,
+        "http://127.0.0.1:" + server.getAddress().getPort()
+      );
+      var message = json
+        .object()
+        .put("text", "Pedido confirmado")
+        .put("imageUrl", "https://example.test/image.jpg")
+        .put("imageContentType", "image/jpeg");
+      assertThat(
+        provider
+          .send(new SendCommand("+5516999999999", message, channel))
+          .messageId()
+      ).isEqualTo("image-1");
+      var payload = json.read(received.get());
+      assertThat(payload.path("mediatype").asText()).isEqualTo("image");
+      assertThat(payload.path("media").asText()).isEqualTo(
+        "https://example.test/image.jpg"
+      );
+      assertThat(payload.path("caption").asText()).isEqualTo(
+        "Pedido confirmado"
+      );
+      assertThat(payload.path("number").asText()).isEqualTo("5516999999999");
+      message.put("text", "a".repeat(1025));
+      assertThatThrownBy(() ->
+        provider.send(new SendCommand("+5516999999999", message, channel))
+      ).isInstanceOfSatisfying(DeliveryFailure.class, e -> {
+        assertThat(e.code).isEqualTo("IMAGE_CAPTION_TOO_LONG");
+        assertThat(e.ambiguous).isFalse();
+      });
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
   void healthReadsConnectionStateWithoutSendingAndDoesNotClaimDeliveryReadiness()
     throws Exception {
     var state = new AtomicReference<>("{\"instance\":{\"state\":\"close\"}}");

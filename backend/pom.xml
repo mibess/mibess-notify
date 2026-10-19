@@ -4,6 +4,7 @@
   <groupId>com.mibess</groupId><artifactId>notify</artifactId><version>1.0.0</version><name>Mibess Notify</name>
   <properties><java.version>25</java.version><testcontainers.version>1.21.4</testcontainers.version></properties>
   <dependencies>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>s3</artifactId><version>2.56.0</version></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>

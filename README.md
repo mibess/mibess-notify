@@ -112,3 +112,7 @@ Não é preciso criar aplicação, regra ou chave de API. A confirmação gera u
 O CRM usa a aplicação `ARTGIAN_CRM`, independente de `ARTGIAN`/Studio e seu `ORDER_PAID`. Os avisos são `CRM_ORDER_IMPORTED`, `CRM_ORDER_PAID`, `CRM_ORDER_PAYMENT_ISSUE`, `CRM_ORDER_FULFILLMENT_UPDATED`, `CRM_ORDER_COSTS_OUTDATED`, `CRM_SYNC_FAILED`, `CRM_SYNC_RECOVERED` e `CRM_NOTIFY_TEST`.
 
 Template comum `crm_aviso`: `*{{title}}*` seguido de `{{message}}` e `{{url}}`, cada um em uma linha, com as variáveis `title,message,url`. Use somente esses campos garantidos; cliente/rastreio e demais campos opcionais podem ser null. No Evolution a aprovação é local; no Meta é necessária aprovação real do template no provider. Configure o grupo exclusivo `ARTGIAN_CRM_OPERATIONS`, com consentimentos válidos, prioridade NORMAL e exceção HIGH para `CRM_SYNC_FAILED`. O botão **Enviar teste** fica em Integrações no CRM; aceitação do evento não equivale a entrega no WhatsApp.
+
+## Imagens de identidade nas notificações
+
+Imagens opcionais por aplicação/cliente, template ou envio manual, com upload e prévia no painel. Padrão leve: **960 × 504 px, JPG/PNG, até 500 KB**. O botão **Criar imagem padrão** gera uma identidade em JPEG com o nome informado. Evolution envia imagem e legenda em uma mensagem; Meta exige template aprovado com cabeçalho de imagem. O bucket privado do Notify e os acessos IAM de desenvolvimento e produção já foram criados e verificados; a publicação desta versão ainda está pendente. Veja [configuração, uso e API de imagens](docs/IMAGES.md).

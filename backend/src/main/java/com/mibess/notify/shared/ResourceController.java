@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin")
 public class ResourceController {
 
+  private final com.mibess.notify.media.NotificationImages images;
   private final ResourceStore store;
   private final WorkspaceAccess access;
   private final AuditLog audit;
@@ -30,6 +31,7 @@ public class ResourceController {
 
   public ResourceController(
     ResourceStore store,
+    com.mibess.notify.media.NotificationImages images,
     WorkspaceAccess access,
     AuditLog audit,
     Crypto crypto,
@@ -38,6 +40,7 @@ public class ResourceController {
     @Value("${notify.fake-provider}") boolean fake
   ) {
     this.store = store;
+    this.images = images;
     this.access = access;
     this.audit = audit;
     this.crypto = crypto;
@@ -94,7 +97,7 @@ public class ResourceController {
     ObjectNode spec = input.spec().deepCopy();
     spec.remove(List.of("credentialsConfigured", "encryptedCredentials"));
     Set<String> allowed = switch (kind) {
-      case APPLICATIONS -> Set.of("description");
+      case APPLICATIONS -> Set.of("description", "imageId");
       case CONTACTS -> Set.of(
         "externalId",
         "phone",
@@ -124,6 +127,9 @@ public class ResourceController {
         "category",
         "status",
         "body",
+        "imageId",
+        "imageDisabled",
+        "headerType",
         "variables"
       );
       case RULES -> Set.of(
@@ -148,6 +154,7 @@ public class ResourceController {
       );
     switch (kind) {
       case APPLICATIONS -> {
+        images.validateReference(w, spec);
       }
       case CONTACTS -> {
         spec.put("phone", ConsentService.phone(spec.path("phone").asText()));
@@ -227,7 +234,30 @@ public class ResourceController {
         ) throw new IllegalArgumentException("Versão Graph API inválida");
       }
       case TEMPLATES -> {
-        reference(Kind.CHANNELS, w, spec.path("channelConnectionId").asText());
+        var channel = reference(
+          Kind.CHANNELS,
+          w,
+          spec.path("channelConnectionId").asText()
+        );
+        images.validateReference(w, spec);
+        if (spec.has("headerType")) oneOf(
+          spec,
+          "headerType",
+          Set.of("NONE", "IMAGE")
+        );
+        if (
+          channel.spec().path("provider").asText().equals("WHATSAPP_META") &&
+          !spec.path("imageId").asText().isBlank() &&
+          !spec.path("headerType").asText().equals("IMAGE")
+        ) throw new IllegalArgumentException(
+          "Selecione cabeçalho IMAGE para anexar uma imagem ao template Meta."
+        );
+        if (
+          spec.path("imageDisabled").asBoolean() &&
+          spec.path("headerType").asText().equals("IMAGE")
+        ) throw new IllegalArgumentException(
+          "O cabeçalho IMAGE não permite desativar a imagem."
+        );
         required(spec, "providerTemplateName");
         required(spec, "language");
         oneOf(

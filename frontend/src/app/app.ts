@@ -2,6 +2,7 @@ import { Component, inject, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { Api, Resource, errorText } from "./api";
+import { NotificationImage } from "./notification-image";
 import { IconComponent } from "./icon";
 import { DialogFocus } from "./dialog-focus";
 import { IntegrationWizard, validEventPattern } from "./integration-wizard";
@@ -17,6 +18,9 @@ interface Field {
   hint?: string;
 }
 export const LABELS: Record<string, string> = {
+  INVALID_NOTIFICATION_IMAGE:
+    "Imagem ausente, inválida ou legenda acima de 1024 caracteres",
+  IMAGE_STORAGE_UNAVAILABLE: "Imagem indisponível no S3",
   NO_RULE_FOR_EVENT_TYPE: "Nenhuma regra para este tipo de evento",
   RULE_DISABLED: "A regra está desativada",
   CONDITIONS_NOT_MET: "As condições da regra não foram atendidas",
@@ -67,7 +71,14 @@ const REF = (key: string, label: string, ref: string): Field => ({
   required: true,
 });
 const FIELDS: Record<string, Field[]> = {
-  applications: [{ key: "description", label: "Descrição", type: "textarea" }],
+  applications: [
+    { key: "description", label: "Descrição", type: "textarea" },
+    {
+      key: "imageId",
+      label: "Imagem padrão da aplicação / cliente",
+      type: "image",
+    },
+  ],
   contacts: [
     { key: "externalId", label: "Identificador externo" },
     {
@@ -151,6 +162,24 @@ const FIELDS: Record<string, Field[]> = {
     },
   ],
   templates: [
+    {
+      key: "imageId",
+      label: "Imagem deste template (opcional)",
+      type: "image",
+      hint: "Sem seleção, os eventos usam a imagem da aplicação. No envio manual, selecione a imagem aqui ou ao preparar a mensagem.",
+    },
+    {
+      key: "imageDisabled",
+      label: "Enviar apenas texto, sem imagem da aplicação",
+      type: "checkbox",
+    },
+    {
+      key: "headerType",
+      label: "Cabeçalho aprovado na Meta",
+      type: "select",
+      options: ["NONE", "IMAGE"],
+      hint: "Na Meta, selecione IMAGE somente se o template foi aprovado com cabeçalho de imagem. Templates NONE continuam enviando apenas texto.",
+    },
     REF("channelConnectionId", "Identidade remetente", "channels"),
     {
       key: "providerTemplateName",
@@ -220,6 +249,7 @@ const FIELDS: Record<string, Field[]> = {
   imports: [
     CommonModule,
     FormsModule,
+    NotificationImage,
     IconComponent,
     IntegrationWizard,
     DialogFocus,
@@ -232,6 +262,7 @@ export class AppComponent {
   booting = signal(true);
   loading = signal(false);
   saving = signal(false);
+  imageUploading = signal(false);
   error = signal("");
   toast = signal("");
   page = signal("dashboard");
@@ -368,6 +399,7 @@ export class AppComponent {
       await this.api.post("auth/logout");
       this.user.set(null);
       this.manualPending = null;
+      this.manualImageId = "";
       this.manualPreview.set(null);
       this.manualResult.set(null);
       this.manualForm = {
@@ -562,6 +594,7 @@ export class AppComponent {
             language: "pt_BR",
             category: "UTILITY",
             status: "DRAFT",
+            headerType: "NONE",
             variables: [],
             conditions: [],
             targetType: "CONTACT_GROUP",
@@ -597,6 +630,7 @@ export class AppComponent {
     this.form.spec.members = [...set];
   }
   async save() {
+    if (this.saving() || this.imageUploading()) return;
     this.saving.set(true);
     this.error.set("");
     try {
@@ -640,7 +674,13 @@ export class AppComponent {
           );
         body.spec.eventPriorities = Object.fromEntries(
           Object.entries(body.spec.eventPriorities || {}).filter(
-            ([type, priority]) => !!priority && body.spec.eventTypes.some((pattern: string) => pattern.endsWith("*") ? type.startsWith(pattern.slice(0, -1)) : type === pattern),
+            ([type, priority]) =>
+              !!priority &&
+              body.spec.eventTypes.some((pattern: string) =>
+                pattern.endsWith("*")
+                  ? type.startsWith(pattern.slice(0, -1))
+                  : type === pattern,
+              ),
           ),
         );
         body.spec.conditions = (body.spec.conditions || []).map((c: any) => ({
@@ -684,6 +724,7 @@ export class AppComponent {
     text: "",
     variables: {} as Record<string, string>,
   };
+  manualImageId = "";
   manualMode = "text";
   manualPreview = signal<any>(null);
   manualResult = signal<any>(null);
@@ -749,12 +790,13 @@ export class AppComponent {
     this.manualResult.set(null);
     this.manualRequestId = crypto.randomUUID();
     if (resetTemplate) {
+      this.manualImageId = "";
       this.manualForm.templateId = "";
       this.manualForm.variables = {};
     }
   }
   async reviewManual() {
-    if (this.saving() || this.manualPending) return;
+    if (this.saving() || this.manualPending || this.imageUploading()) return;
     this.saving.set(true);
     this.error.set("");
     try {
@@ -765,6 +807,7 @@ export class AppComponent {
         templateId: this.manualUsesTemplate
           ? this.manualForm.templateId || null
           : null,
+        ...(this.manualImageId ? { imageId: this.manualImageId } : {}),
         text: this.manualUsesTemplate ? null : this.manualForm.text,
         variables: this.manualUsesTemplate ? this.manualForm.variables : {},
       };
@@ -818,6 +861,7 @@ export class AppComponent {
     if (this.manualPending) return;
     this.manualResult.set(null);
     this.manualPreview.set(null);
+    this.manualImageId = "";
     this.manualForm.text = "";
     this.manualForm.variables = {};
     this.manualRequestId = crypto.randomUUID();

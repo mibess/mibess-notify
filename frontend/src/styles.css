@@ -2449,3 +2449,8 @@ summary {
     overflow-wrap: anywhere;
   }
 }
+
+.image-picker { border: 1px solid var(--border, #dce2e8); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; margin: 12px 0; }
+.image-picker legend { font-weight: 600; padding: 0 6px; }
+.image-picker input[type="file"] { max-width: 100%; padding: 10px; }
+.notification-image { display: block; width: 100%; max-width: 600px; height: auto; object-fit: contain; border-radius: 10px; margin: 10px 0; }

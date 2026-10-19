@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class DeliveryWorker {
 
+  private final com.mibess.notify.media.NotificationImages images;
   private final JdbcClient db;
   private final Json json;
   private final ResourceStore store;
@@ -31,6 +32,7 @@ public class DeliveryWorker {
 
   public DeliveryWorker(
     JdbcClient db,
+    com.mibess.notify.media.NotificationImages images,
     Json json,
     ResourceStore store,
     ConsentService consent,
@@ -39,6 +41,7 @@ public class DeliveryWorker {
     TransactionTemplate tx
   ) {
     this.db = db;
+    this.images = images;
     this.json = json;
     this.store = store;
     this.consent = consent;
@@ -219,7 +222,7 @@ public class DeliveryWorker {
           .send(
             new SendCommand(
               row.get("recipient_address").toString(),
-              command,
+              images.forDelivery((UUID) row.get("workspace_id"), command),
               connection
             )
           );

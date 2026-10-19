@@ -8,6 +8,7 @@ services:
     env_file: /opt/mibess-notify/secrets/prd.env
     environment:
       NOTIFY_ENV: prd
+      NOTIFY_IMAGES_PREFIX: mibess-notify/prd
       DB_HOST: postgres-prd
       DB_NAME: mibess_notify
       DB_USERNAME: mibess_notify

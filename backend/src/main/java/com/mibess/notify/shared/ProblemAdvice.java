@@ -9,6 +9,16 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class ProblemAdvice {
 
+  @ExceptionHandler(
+    org.springframework.web.multipart.MaxUploadSizeExceededException.class
+  )
+  ResponseEntity<ProblemDetail> uploadTooLarge() {
+    return response(
+      413,
+      "A imagem excede o limite de upload. Confira os limites informados no painel."
+    );
+  }
+
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<ProblemDetail> invalid(IllegalArgumentException e) {
     return response(400, e.getMessage());

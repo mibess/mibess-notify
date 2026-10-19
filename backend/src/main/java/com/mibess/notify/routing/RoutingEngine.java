@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RoutingEngine {
 
+  private final com.mibess.notify.media.NotificationImages images;
   private final JdbcClient db;
   private final Json json;
   private final ResourceStore store;
@@ -21,11 +22,13 @@ public class RoutingEngine {
 
   public RoutingEngine(
     JdbcClient db,
+    com.mibess.notify.media.NotificationImages images,
     Json json,
     ResourceStore store,
     ConsentService consent
   ) {
     this.db = db;
+    this.images = images;
     this.json = json;
     this.store = store;
     this.consent = consent;
@@ -144,6 +147,24 @@ public class RoutingEngine {
         command.put("language", template.spec().path("language").asText());
         command.set("parameters", json.tree(parameters));
         command.put("text", text);
+        if (state.equals("PENDING")) {
+          try {
+            images.attach(
+              command,
+              workspace,
+              template,
+              store.get(Kind.APPLICATIONS, workspace, app),
+              channel.spec().path("provider").asText(),
+              null
+            );
+          } catch (
+            IllegalArgumentException
+            | org.springframework.web.server.ResponseStatusException e
+          ) {
+            state = "FAILED";
+            error = "INVALID_NOTIFICATION_IMAGE";
+          }
+        }
         command.set("consent", recipient.consent());
         command.put("correlationId", event.get("correlation_id").toString());
         UUID id = UUID.randomUUID();

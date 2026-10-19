@@ -903,7 +903,16 @@
         class="field"
         [class.hidden]="field.type==='target'&&form.spec.targetType==='EVENT_RECIPIENT'"
       >
-        @switch(field.type){@case('checkbox'){<label class="checkbox-label"
+        @switch(field.type){@case('image'){
+        <notification-image
+          (busyChange)="imageUploading.set($event)"
+          [value]="form.spec[field.key] || ''"
+          (valueChange)="form.spec[field.key]=$event"
+          [name]="form.name"
+          [label]="field.label"
+          [disabled]="!isAdmin() || saving()"
+        />
+        }@case('checkbox'){<label class="checkbox-label"
           ><input
             [name]="field.key"
             type="checkbox"
@@ -1118,7 +1127,10 @@
     <div class="drawer-footer">
       <button type="button" class="btn" (click)="editor.set(false)">
         Fechar</button
-      >@if(isAdmin()){<button class="btn primary" [disabled]="saving()">
+      >@if(isAdmin()){<button
+        class="btn primary"
+        [disabled]="saving() || imageUploading()"
+      >
         {{saving()?'Salvando…':'Salvar alterações'}}</button
       >}
     </div>
@@ -1187,7 +1199,11 @@
       <div class="error">{{detail().notification.error_code}}</div>
       }
     </div>
-    @if(detail().notification.source==='MANUAL'){
+    @if(detail().imageId){<img
+      class="notification-image"
+      [src]="'/api/v1/admin/images/'+detail().imageId+'/content'"
+      alt="Imagem enviada na notificação"
+    />} @if(detail().notification.source==='MANUAL'){
     <p class="subtle">Enviada por {{detail().notification.created_by}}</p>
     <h3 class="section-title">Mensagem</h3>
     <pre class="message-preview">{{detail().message}}</pre>
@@ -1519,11 +1535,25 @@
           <small class="manual-count"
             >{{manualForm.text.length}} / 4096 caracteres</small
           >
+          } @if(manualChannel?.spec?.['provider']!=='WHATSAPP_META' ||
+          manualTemplate?.spec?.['headerType']==='IMAGE'){
+          <notification-image
+            (busyChange)="imageUploading.set($event)"
+            [value]="manualImageId"
+            (valueChange)="manualImageId=$event;manualChanged()"
+            [name]="manualTemplate?.name || ''"
+            [disabled]="saving()||!!manualPreview()||!!manualPending"
+          />
+          <p class="subtle">
+            A imagem será enviada junto da mensagem. Na Evolution, a legenda
+            aceita até 1024 caracteres. Sem seleção, usa a imagem do template,
+            quando houver.
+          </p>
           }
           <button
             class="btn primary"
             type="submit"
-            [disabled]="loading()||!manualChannels.length"
+            [disabled]="loading()||!manualChannels.length||imageUploading()"
           >
             {{saving()?'Validando…':'Revisar mensagem'}}<app-icon
               name="arrow"
@@ -1555,6 +1585,11 @@
           <dd>{{manualPreview().channelName}}</dd>
         </div>
       </dl>
+      @if(manualPreview().imageId){<img
+        class="notification-image"
+        [src]="'/api/v1/admin/images/'+manualPreview().imageId+'/content'"
+        alt="Imagem da mensagem a enviar"
+      />}
       <pre class="message-preview">{{manualPreview().text}}</pre>
       @if(manualPending&&!saving()){
       <p class="manual-notice">

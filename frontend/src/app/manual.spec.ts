@@ -56,6 +56,30 @@ describe("Manual notification confirmation", () => {
     expect(api.post.mock.lastCall?.[1].previewHash).toBe("hash");
     expect(component.manualResult().notificationId).toBe("notification");
   });
+  it("binds the image into the reviewed and idempotent confirmed request", async () => {
+    component.manualImageId = "image-1";
+    api.post.mockResolvedValueOnce({
+      previewHash: "with-image",
+      imageId: "image-1",
+      text: "Uma mensagem",
+    });
+    await component.reviewManual();
+    expect(api.post.mock.lastCall?.[1].imageId).toBe("image-1");
+    api.post.mockResolvedValueOnce({
+      notificationId: "image-notification",
+      status: "PENDING",
+    });
+    await component.sendManual();
+    expect(api.post.mock.lastCall?.[1]).toMatchObject({
+      imageId: "image-1",
+      previewHash: "with-image",
+    });
+  });
+  it("waits for the image upload before preparing a preview", async () => {
+    component.imageUploading.set(true);
+    await component.reviewManual();
+    expect(api.post).not.toHaveBeenCalled();
+  });
   it("reuses the same request after a lost response, including after refresh", async () => {
     api.post.mockResolvedValueOnce({
       previewHash: "hash",
