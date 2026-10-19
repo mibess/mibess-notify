@@ -2,7 +2,7 @@
 
 ## Estado
 
-HML e PRD publicados e saudáveis em 19/10/2026 no commit `97f9800b8445ae1d66388d79f0fbb82956a2775c`, com imagens ECR identificadas pelo SHA. O aceite HML usou provider fake; o aceite PRD reprocessou uma vez o evento original do CRM e recebeu confirmação Evolution DELIVERED. A release anterior e os backups próprios estão registrados na VPS. Veja a publicação de 19/10 ao final e [VALIDATION.md](VALIDATION.md).
+HML e PRD publicados e saudáveis em 19/10/2026 no commit `7f7269f1d462a807668c081eb40a8713a8316aa7`, com suporte a imagens de identidade. O aceite HML usou provider fake; PRD validou quatro mensagens com imagem para o contato expressamente autorizado. As aplicações Artgian Studio, Artgian CRM, Sistema Comercial e IA-Jud receberam imagens padrão. Veja [IMAGES.md](IMAGES.md) e o registro de publicação ao final.
 
 O provisionamento inicial e o acesso de deploy foram aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). Evidências desse marco:
 
@@ -106,3 +106,12 @@ O aceite fake em `infrastructure/smoke.py` verifica agora diagnóstico NO_MATCH,
 - Depois do health UP do Notify, CRM `ddd85476b21aa660c4138f460c0ef5ec9488cde4` publicado na Vercel: [`dpl_2WY1GfMGnjACx5F3JosmXxQzHMjh`](https://vercel.com/claudemir-custodios-projects/artgian-crm/2WY1GfMGnjACx5F3JosmXxQzHMjh), READY, alias `crm.artgian.com.br`. Documentação posterior não altera os artefatos implantados.
 - Único teste real: reprocessamento do evento CRM original às 12:07:04 de 19/10/2026 (Brasília), seguido de SENT às 12:07:05 e DELIVERED às 12:07:06, uma tentativa para o único contato autorizado. Nenhum teste adicional foi disparado pelo botão do CRM.
 - Aceite encerrado em 19/10/2026: proprietário confirmou o recebimento correto da mensagem com título e link; card autenticado do CRM conferido como Ativado, destino PRD, 0 pendentes / 1 aceito / 0 falhas. Nenhuma publicação ou mensagem adicional foi necessária para essa confirmação.
+
+### Publicação de imagens — 19/10/2026
+
+- Commit `7f7269f1d462a807668c081eb40a8713a8316aa7`: [HML](https://github.com/mibess/mibess-notify/actions/runs/39301475058) e [PRD](https://github.com/mibess/mibess-notify/actions/runs/39302382839) aprovados, após 46 testes backend e 19 frontend. Aceite fake HML completo aprovado antes da promoção.
+- Migration V5 adiciona apenas `notification_images`. Banco Notify recebeu backup pelo procedimento existente; migrations antigas não foram alteradas.
+- Runtime PRD recebeu o acesso IAM exclusivo `mibess-notify-images-prd`, restrito ao prefixo PRD do bucket privado. O arquivo de secrets anterior foi preservado no host, e o atual permanece com modo 0600. HML não recebeu credenciais S3.
+- Quatro imagens JPEG geradas e associadas às aplicações, quatro eventos autorizados para o contato de teste, uma tentativa cada. IDs e resultados estão em [IMAGES.md](IMAGES.md). Regras de negócio preservadas; fixtures de teste desativadas e chaves temporárias revogadas.
+- Apenas os quatro containers frontend/backend Notify foram substituídos; os dez demais serviços mantiveram os mesmos IDs, incluindo PostgreSQL, Evolution, Redis, RabbitMQ, proxy e serviço de segredos. Health HTTPS UP em ambos os ambientes.
+- Rollback mantém schema V5. Uma versão antiga deixa de enviar imagens; não reverter migrations nem apagar arquivos/histórico.

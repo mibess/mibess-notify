@@ -27,7 +27,7 @@ O acesso do runtime precisa apenas de `s3:PutObject` e `s3:GetObject` no prefixo
 
 **Validação:** 46 testes backend (incluindo PostgreSQL/RabbitMQ reais), 19 testes frontend e build Angular/CSP aprovados. O SDK Java executou upload, leitura autenticada e download com URL temporária no bucket real; acesso anônimo retornou 403. O JPEG de amostra ARTGIAN CRM ficou com 20.773 bytes. O arquivo temporário de teste no S3 foi removido. O teste automatizado não envia mensagens reais. O envio real autorizado pelo usuário está registrado abaixo.
 
-**Estado operacional:** bucket criado, protegido e verificado. Após autorização explícita, foram criadas somente as identidades IAM `mibess-notify-images-dev` e `mibess-notify-images-prd`, com uma chave de acesso cada e política `NotificationImagesOnly` limitada ao prefixo correspondente. Upload, leitura, download assinado e bloqueio entre ambientes foram verificados com as credenciais reais de cada identidade. Credenciais em `.local/images-dev.env` e `.local/images-prd.env`, modo 0600 e ignoradas pelo Git. Nenhuma identidade ou chave de HML foi criada. Políticas em `infrastructure/image-access/dev.json` e `prd.json`. O código ainda não foi publicado em HML/PRD.
+**Estado operacional:** bucket criado, protegido e verificado. Após autorização explícita, foram criadas somente as identidades IAM `mibess-notify-images-dev` e `mibess-notify-images-prd`, com uma chave de acesso cada e política `NotificationImagesOnly` limitada ao prefixo correspondente. Upload, leitura, download assinado e bloqueio entre ambientes foram verificados com as credenciais reais de cada identidade. Credenciais em `.local/images-dev.env` e `.local/images-prd.env`, modo 0600 e ignoradas pelo Git. Nenhuma identidade ou chave de HML foi criada. Políticas em `infrastructure/image-access/dev.json` e `prd.json`. O código foi publicado em HML/PRD no commit `7f7269f1d462a807668c081eb40a8713a8316aa7`; as quatro aplicações reais de produção receberam imagens padrão e passaram no envio real autorizado.
 
 ## Configuração do backend
 
@@ -67,3 +67,18 @@ Depois de autorizar apenas os acessos IAM de desenvolvimento e produção, o usu
 Foi feito um único `sendMedia` pela Evolution já existente, usando a imagem JPEG do padrão com o título MIBESS NOTIFY, **960 × 504 px / 21.115 bytes**, armazenada no S3 com o acesso restrito de produção e disponibilizada por URL temporária do SDK Java. Legenda identifica expressamente o teste solicitado. A Evolution respondeu **HTTP 201**, tipo `imageMessage`, ID `3EB0E11F8AAD38931E708E`. A consulta posterior ao registro exato da mensagem confirmou recibos **DELIVERY_ACK e READ**. Não houve reenvio.
 
 Esse foi um envio de amostra diretamente pelo provedor, sem publicação da versão nova e sem passagem pela fila/histórico do Notify. O estado do teste está em `.local/authorized-image-test-state.json`; o arquivo temporário com URL assinada foi removido. A arte do teste permanece no bucket, privada, sem credenciais embutidas.
+
+## Ativação por aplicação — 19/10/2026
+
+Por solicitação do proprietário, a versão com imagens foi publicada primeiro em [HML](https://github.com/mibess/mibess-notify/actions/runs/39301475058), com aceite fake completo, e depois em [PRD](https://github.com/mibess/mibess-notify/actions/runs/39302382839). As imagens foram geradas pelo endpoint da aplicação já em produção, com fonte do container, formato JPEG e credenciais IAM restritas de PRD. As aplicações que eram fixtures antigas permaneceram desativadas.
+
+| Aplicação | Imagem | Bytes | Notificação de teste | Status confirmado |
+|---|---|---:|---|---|
+| ARTGIAN STUDIO | `f3520dc0-fd72-42d3-86ba-07ea76268881` | 22710 | `04bdef41-7819-429b-9108-9d0d6ba82191` | DELIVERED |
+| ARTGIAN CRM | `bb014da9-8122-4d1a-a721-08c9cfae5847` | 21153 | `95ef77d8-9b09-4168-918e-6f859c70d24e` | DELIVERED |
+| SISTEMA COMERCIAL | `fb331560-404b-4ee2-9459-5dd382348bff` | 24704 | `58ead68c-33fc-4be7-bbc1-f732b3fa7bc4` | DELIVERED |
+| IA-JUD | `855fe7ff-9c59-4722-b93d-fe7e98daeb2a` | 17943 | `06d161ed-0273-4c88-961d-da0e7f1e94bb` | DELIVERED |
+
+Os quatro testes foram publicados como eventos `NOTIFY_IMAGE_PREVIEW` nas próprias aplicações, destinados exclusivamente ao contato autorizado **+55 16 99720-0212**. O fluxo completo (evento → fila → regra → imagem herdada da aplicação → Evolution → webhook) foi conferido no histórico. Cada envio teve uma tentativa. Foram usadas chaves de API temporárias, revogadas após aceitar cada evento, sem rotação das chaves operacionais. Regras/templates de teste foram desativados após o envio; histórico e auditoria foram preservados.
+
+As regras de negócio existentes conservaram configuração e estado. Os templates ativos da Evolution herdam a imagem da aplicação; os próximos eventos usam a identidade correspondente sem alteração nos publicadores. IA-Jud e Sistema Comercial ficaram com imagem cadastrada para os próximos fluxos; não foram criadas regras de negócio para essas aplicações. O usuário pode substituir as artes pelo upload no painel.
