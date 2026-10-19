@@ -2,7 +2,9 @@
 
 ## Estado
 
-Provisionamento e acesso de deploy aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). HML e PRD publicados e saudáveis no commit `e7a14e57eb51d9cee937983975ea26b531a4c137`, usando as mesmas imagens imutáveis ECR. A release anterior e os backups próprios estão registrados na VPS.
+HML e PRD publicados e saudáveis em 19/10/2026 no commit `97f9800b8445ae1d66388d79f0fbb82956a2775c`, com imagens ECR identificadas pelo SHA. O aceite HML usou provider fake; o aceite PRD reprocessou uma vez o evento original do CRM e recebeu confirmação Evolution DELIVERED. A release anterior e os backups próprios estão registrados na VPS. Veja a publicação de 19/10 ao final e [VALIDATION.md](VALIDATION.md).
+
+O provisionamento inicial e o acesso de deploy foram aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). Evidências desse marco:
 
 - [Pipeline HML aprovada](https://github.com/mibess/mibess-notify/actions/runs/35945938671).
 - [Pipeline PRD aprovada](https://github.com/mibess/mibess-notify/actions/runs/35946472811).
@@ -94,3 +96,12 @@ A V4 adiciona `events.routing_diagnostics` com default `{}`, a tabela `event_tim
 A compatibilidade de schema não faz uma imagem anterior compreender `eventTypes` ou `eventPriorities`: ela lê somente `eventType` e `priority`. Antes de voltar à imagem anterior, desative a regra de múltiplos tipos e restaure regras individuais, com tipo exato e prioridade correspondente. Na integração CRM, conserve as oito regras individuais desativadas como configuração de recuperação; reative-as somente após desativar a regra consolidada. Nunca deixe ambos os conjuntos ativos, pois regras distintas podem criar duas notificações para o mesmo evento/destinatário. Coordene a troca com o publicador e confira eventos NO_MATCH no intervalo; não altere a regra Studio `ORDER_PAID`.
 
 O aceite fake em `infrastructure/smoke.py` verifica agora diagnóstico NO_MATCH, catálogo, simulação sem entrega, reprocessamento auditado sem duplicatas, prefixos/prioridade por evento e saúde, além de SENT→DELIVERED, evento idempotente, destinatário do evento e suppression. Execute somente no ambiente HML/local, com as credenciais já existentes no ambiente operacional. O script não imprime chaves e revoga a chave de teste e desativa os cadastros ao finalizar.
+
+### Publicação de 19/10/2026
+
+- HML publicou `97f9800b8445ae1d66388d79f0fbb82956a2775c` pela [execução 39272925805](https://github.com/mibess/mibess-notify/actions/runs/39272925805). Testes remotos e deploy aprovados; aceite fake completo, inclusive diagnóstico/reprocessamento, aprovado após o health UP.
+- PRD publicou o mesmo commit após o aceite HML e autorização explícita do proprietário: [execução 39274147763 aprovada](https://github.com/mibess/mibess-notify/actions/runs/39274147763), incluindo CI, deploy Hostinger e HTTPS público. Health público UP e login/sessão/CSRF verificados novamente após a publicação.
+- Somente os quatro containers frontend/backend Notify de HML/PRD foram substituídos. Os dez demais IDs permaneceram iguais; PostgreSQL HML/PRD, Evolution API/Redis/PostgreSQL, RabbitMQ, proxy e serviço de segredos mantiveram também o horário de início. `liga-api` e `kronosmind-backend` já estavam em ciclos de reinício antes da publicação e continuaram com os mesmos IDs, sem intervenção nesta tarefa.
+- Configuração PRD: regra consolidada `ARTGIAN_CRM_AVISOS` ativa, com os sete eventos de negócio e CRM_NOTIFY_TEST, prioridade HIGH em CRM_SYNC_FAILED e NORMAL nas demais. As oito regras exatas permanecem desativadas para recuperação, sem sobreposição. A regra Studio ORDER_PAID foi preservada.
+- Depois do health UP do Notify, CRM `ddd85476b21aa660c4138f460c0ef5ec9488cde4` publicado na Vercel: [`dpl_2WY1GfMGnjACx5F3JosmXxQzHMjh`](https://vercel.com/claudemir-custodios-projects/artgian-crm/2WY1GfMGnjACx5F3JosmXxQzHMjh), READY, alias `crm.artgian.com.br`. Documentação posterior não altera os artefatos implantados.
+- Único teste real: reprocessamento do evento CRM original às 12:07:04 de 19/10/2026 (Brasília), seguido de SENT às 12:07:05 e DELIVERED às 12:07:06, uma tentativa para o único contato autorizado. Nenhum teste adicional foi disparado pelo botão do CRM.
