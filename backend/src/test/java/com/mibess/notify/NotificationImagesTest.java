@@ -22,7 +22,7 @@ class NotificationImagesTest {
   final ImageStorage storage = mock(ImageStorage.class);
   final JdbcClient db = mock(JdbcClient.class, RETURNS_DEEP_STUBS);
   final NotificationImages images = spy(
-    new NotificationImages(db, storage, "notify/test", 960, 504, 500000)
+    new NotificationImages(db, storage, "notify/test", 960, 320, 500000)
   );
 
   Resource resource(com.fasterxml.jackson.databind.JsonNode spec) {
@@ -44,7 +44,7 @@ class NotificationImagesTest {
         imageId,
         "image/jpeg",
         960,
-        504,
+        320,
         1234,
         "/preview"
       )
@@ -54,24 +54,73 @@ class NotificationImagesTest {
   }
 
   @Test
-  void universalArtworkIsLightAndObeysTheSameUploadValidation() {
-    byte[] bytes = StandardImage.create("ARTGIAN CRM", 960, 504);
+  void compactFallbackIsLightAndObeysTheSameUploadValidation() {
+    byte[] bytes = StandardImage.create("ARTGIAN CRM", 960, 320);
     assertThat(bytes.length).isLessThan(100000);
     assertThat(
-      ImageRules.validate(bytes, "image/jpeg", 960, 504, 500000).contentType()
+      ImageRules.validate(bytes, "image/jpeg", 960, 320, 500000).contentType()
     ).isEqualTo("image/jpeg");
     assertThatThrownBy(() ->
-      ImageRules.validate(bytes, "image/png", 960, 504, 500000)
+      ImageRules.validate(bytes, "image/png", 960, 320, 500000)
     ).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() ->
       ImageRules.validate(bytes, "image/jpeg", 1200, 630, 500000)
     ).hasMessageContaining("1200 × 630");
     assertThatThrownBy(() ->
-      ImageRules.validate(new byte[500001], "image/jpeg", 960, 504, 500000)
+      ImageRules.validate(new byte[500001], "image/jpeg", 960, 320, 500000)
     ).hasMessageContaining("500 KB");
     assertThatThrownBy(() ->
-      ImageRules.validate("<svg/>".getBytes(), "image/png", 960, 504, 500000)
+      ImageRules.validate("<svg/>".getBytes(), "image/png", 960, 320, 500000)
     ).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void oldArtworkRemainsReadableAndDeliverableAfterThePolicyChanges() {
+    byte[] legacyBytes = StandardImage.create("ARTGIAN CRM", 960, 504);
+    when(
+      db
+        .sql(anyString())
+        .param(eq("w"), any())
+        .param(eq("id"), any())
+        .query()
+        .listOfRows()
+    ).thenReturn(
+      List.of(
+        Map.of(
+          "object_key",
+          "notify/test/legacy.jpg",
+          "content_type",
+          "image/jpeg",
+          "width",
+          960,
+          "height",
+          504,
+          "byte_size",
+          legacyBytes.length
+        )
+      )
+    );
+    when(storage.read("notify/test/legacy.jpg")).thenReturn(legacyBytes);
+    when(storage.deliveryUrl("notify/test/legacy.jpg")).thenReturn(
+      "https://example.test/legacy"
+    );
+
+    assertThat(images.policy().height()).isEqualTo(320);
+    assertThat(images.get(workspace, imageId).height()).isEqualTo(504);
+    assertThat(images.content(workspace, imageId)).isEqualTo(legacyBytes);
+    assertThat(
+      images
+        .forDelivery(
+          workspace,
+          json.object().put("imageId", imageId.toString())
+        )
+        .path("imageUrl")
+        .asText()
+    ).isEqualTo("https://example.test/legacy");
+    assertThatThrownBy(() ->
+      images.upload(workspace, legacyBytes, "image/jpeg")
+    ).hasMessageContaining("960 × 320");
+    verify(storage, never()).put(anyString(), any(), anyString());
   }
 
   @Test

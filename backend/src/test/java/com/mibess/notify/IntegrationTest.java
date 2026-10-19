@@ -491,7 +491,7 @@ class IntegrationTest {
     byte[] bytes = com.mibess.notify.media.StandardImage.create(
       "Artgian",
       960,
-      504
+      320
     );
     var result = mvc
       .perform(
@@ -509,6 +509,7 @@ class IntegrationTest {
       )
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.width").value(960))
+      .andExpect(jsonPath("$.height").value(320))
       .andReturn()
       .getResponse()
       .getContentAsString();
@@ -522,7 +523,7 @@ class IntegrationTest {
     byte[] bytes = com.mibess.notify.media.StandardImage.create(
       "Artgian",
       960,
-      504
+      320
     );
     var file = new org.springframework.mock.web.MockMultipartFile(
       "file",
@@ -562,7 +563,7 @@ class IntegrationTest {
       .andExpect(status().isBadRequest())
       .andExpect(
         jsonPath("$.detail").value(
-          org.hamcrest.Matchers.containsString("960 × 504")
+          org.hamcrest.Matchers.containsString("960 × 320")
         )
       );
     UUID image = uploadImage();

@@ -74,7 +74,7 @@ notify:
     region: ${AWS_REGION:us-east-1}
     prefix: ${NOTIFY_IMAGES_PREFIX:mibess-notify/dev}
     width: ${NOTIFY_IMAGES_WIDTH:960}
-    height: ${NOTIFY_IMAGES_HEIGHT:504}
+    height: ${NOTIFY_IMAGES_HEIGHT:320}
     max-bytes: ${NOTIFY_IMAGES_MAX_BYTES:500000}
   encryption-key: ${MASTER_ENCRYPTION_KEY}
   admin-email: ${ADMIN_EMAIL:admin@mibess.com.br}

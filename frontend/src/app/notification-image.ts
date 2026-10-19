@@ -46,7 +46,7 @@ interface ImagePolicy {
               (change)="upload($event)"
           /></label>
           <label
-            >Nome na imagem padrão<input
+            >Nome na imagem simples<input
               [ngModel]="standardName || name"
               (ngModelChange)="standardName = $event"
               [ngModelOptions]="{ standalone: true }"
@@ -58,7 +58,7 @@ interface ImagePolicy {
             (click)="standard()"
             [disabled]="!(standardName || name).trim()"
           >
-            Criar imagem padrão
+            Criar imagem simples
           </button>
         } @else {
           <p class="manual-notice">

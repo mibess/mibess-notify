@@ -41,7 +41,7 @@ public class NotificationImages {
     ImageStorage storage,
     @Value("${notify.images.prefix:mibess-notify/dev}") String prefix,
     @Value("${notify.images.width:960}") int width,
-    @Value("${notify.images.height:504}") int height,
+    @Value("${notify.images.height:320}") int height,
     @Value("${notify.images.max-bytes:500000}") int maxBytes
   ) {
     if (

@@ -9,7 +9,7 @@ describe("Notification image upload", () => {
   const policy = {
     configured: true,
     width: 960,
-    height: 504,
+    height: 320,
     maxBytes: 500000,
     contentTypes: ["image/jpeg", "image/png"],
   };
@@ -48,7 +48,7 @@ describe("Notification image upload", () => {
   it("retains the selected image when server dimensions validation fails", async () => {
     picker.value = "previous-image";
     api.post.mockRejectedValue(
-      new Error("A imagem deve ter exatamente 960 × 504 px."),
+      new Error("A imagem deve ter exatamente 960 × 320 px."),
     );
     const emit = vi.spyOn(picker.valueChange, "emit");
     await picker.upload({
@@ -59,6 +59,6 @@ describe("Notification image upload", () => {
     } as unknown as Event);
     expect(emit).not.toHaveBeenCalled();
     expect(picker.value).toBe("previous-image");
-    expect(picker.error()).toContain("960 × 504");
+    expect(picker.error()).toContain("960 × 320");
   });
 });

@@ -2,12 +2,12 @@
 
 ## Uso no painel
 
-- **Integrações → editar aplicação:** carregue a identidade do cliente em “Imagem padrão da aplicação / cliente” ou use “Criar imagem padrão”. Clique em Salvar para associá-la à aplicação. Eventos usam essa imagem automaticamente na Evolution.
+- **Integrações → editar aplicação:** carregue a identidade do cliente em “Imagem padrão da aplicação / cliente” ou use “Criar imagem simples”. Clique em Salvar para associá-la à aplicação. Eventos usam essa imagem automaticamente na Evolution.
 - **Templates:** uma imagem própria substitui a da aplicação. “Enviar apenas texto” desativa a herança. Na Meta, declare `headerType: IMAGE` apenas para um template realmente aprovado com cabeçalho de imagem; `NONE` continua enviando somente texto, mesmo que a aplicação tenha imagem.
 - **Enviar notificação:** carregue uma imagem opcional e revise a imagem e o texto antes de confirmar. Sem upload, o envio manual usa a imagem do template, se configurada. Um envio manual livre não tem aplicação para herdar identidade.
 - O histórico exibe a imagem que foi selecionada no momento da criação. Trocar a identidade da aplicação não troca a imagem de notificações já criadas. Reenvio explícito de um evento atualiza mensagem e imagem usando a configuração atual; novas tentativas automáticas mantêm a imagem original.
 
-O padrão definido para esta entrega é **960 × 504 px, JPG/PNG, até 500.000 bytes (500 KB)**. Os limites aparecem no painel e são verificados novamente no servidor com leitura do formato real e das dimensões. Arquivos de outro formato, MIME incompatível, peso ou dimensões incorretos são rejeitados. A arte padrão é um JPEG com fundo azul escuro, destaque verde e nome do cliente. É gerada por código para preservar exatamente o nome e o padrão gráfico, sem custo de geração por IA.
+O formato atual é **960 × 320 px, JPG/PNG, até 500.000 bytes (500 KB)**, com altura 37% menor que a primeira versão (504 px). Os limites aparecem no painel e são verificados novamente no servidor com leitura do formato real e das dimensões. Arquivos de outro formato, MIME incompatível, peso ou dimensões incorretos são rejeitados. As quatro aplicações possuem artes próprias em `assets/notification-images/v2/`, entre 24 e 39 KB: Studio com monograma AS marinho/dourado; CRM com selo “a.” e terracota; Comercial verde com assinatura SC; IA-Jud com composição tipográfica em ameixa/lavanda. As referências de Studio, CRM e Comercial vieram dos respectivos projetos; IA-Jud recebeu identidade própria. As artes foram geradas pelo ImageGen integrado e exportadas como JPEG; os prompts estão versionados junto delas. O botão “Criar imagem simples” continua disponível como alternativa genérica por nome, gerada por código. Uploads permitem preservar a identidade de cada cliente. Imagens antigas de 960 × 504 continuam válidas no histórico e nas tentativas pendentes; apenas novos uploads e novas imagens simples seguem 960 × 320.
 
 A Evolution recebe imagem e legenda em **uma única requisição `sendMedia`**; a legenda está limitada a 1024 caracteres para manter compatibilidade com mensagens de mídia. A Meta recebe um parâmetro de imagem no componente `header` do template, preservando os parâmetros do corpo. Aprovação local não aprova o template no provedor. Nenhuma mensagem real é disparada ao subir uma imagem.
 
@@ -36,7 +36,7 @@ NOTIFY_IMAGES_BUCKET=mibess-notify-images-497176797028
 AWS_REGION=sa-east-1
 NOTIFY_IMAGES_PREFIX=mibess-notify/prd
 NOTIFY_IMAGES_WIDTH=960
-NOTIFY_IMAGES_HEIGHT=504
+NOTIFY_IMAGES_HEIGHT=320
 NOTIFY_IMAGES_MAX_BYTES=500000
 ```
 
@@ -56,7 +56,7 @@ Sem bucket, notificações de texto continuam funcionando; o painel explica que 
 
 ## Custos e referências
 
-Há cobrança de armazenamento, requisições PUT/GET e transferência de saída conforme uso; cada identidade é reutilizada por ID, sem upload repetido em cada notificação. Consulta do histórico também gera GET no S3. O limite de 500 KB reduz armazenamento e transferência. Não foram contratados CDN, transformação de imagem ou geração por IA. Consulte [preços S3](https://aws.amazon.com/s3/pricing/) para valores vigentes.
+Há cobrança de armazenamento, requisições PUT/GET e transferência de saída conforme uso; cada identidade é reutilizada por ID, sem upload repetido em cada notificação. Consulta do histórico também gera GET no S3. O limite de 500 KB reduz armazenamento e transferência. O envio não exige CDN, transformação de imagem ou geração por IA em tempo de execução; as quatro artes personalizadas foram criadas uma única vez. Consulte [preços S3](https://aws.amazon.com/s3/pricing/) para valores vigentes.
 
 Referências: [URLs temporárias no AWS SDK Java](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/examples-s3-presign.html), [segurança S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html), [contrato de mídia Evolution](https://github.com/evolution-foundation/evolution-api/blob/main/src/api/dto/sendMessage.dto.ts) e [tipos oficiais de mensagens WhatsApp](https://github.com/WhatsApp/WhatsApp-Nodejs-SDK/blob/main/src/types/messages.ts).
 

@@ -1,0 +1,32 @@
+{
+  "tool": "image_gen (built-in)",
+  "created": "2026-10-19",
+  "output": {
+    "width": 960,
+    "height": 320,
+    "format": "JPEG",
+    "maxBytes": 500000
+  },
+  "images": [
+    {
+      "key": "artgian-studio",
+      "prompt": "Use case: logo-brand. Create a finished minimalist notification identity banner for the existing Artgian Studio brand, using the attached image only as the authentic brand reference. Output a very wide 3:1 landscape image (target 960 by 320 px; if rendered larger preserve EXACT 3:1 aspect ratio). Recompose the actual navy A and gold fine-ribbed S monogram from the reference into an elegant horizontal lockup on a flat warm ivory #f7f3ea background. Monogram at left; next to it the exact word 'Artgian' in refined high-contrast navy #0b2447 serif typography, with small widely tracked 'STUDIO' below. Preserve the visual character and spelling of the original mark. Right third mostly breathing room with a single very faint gold continuous curved line suggesting crafted printed layers, cropped at the right edge; extremely restrained, never competes with logo. Carefully aligned and vertically centered within the short canvas, generous inset margins. Premium editorial identity, crisp edges, flat graphic design, no photographic texture, no grain, no shadows, no card mockup. Only text: 'Artgian' and 'STUDIO'. No notification title, no slogan, no Mibess branding, no generic app icons, no border. Designed to stay recognizable at WhatsApp thumbnail size. This is one single finished banner.",
+      "reference": "/Users/mibess/www/artgian-studio/public/artgian-logo.jpeg"
+    },
+    {
+      "key": "artgian-crm",
+      "prompt": "Use case: logo-brand. Create a finished minimalist identity banner for Artgian CRM, based on its actual existing UI identity: warm paper background #fbfaf7, dark warm ink #292923, terracotta #a84b2d, Georgia-style editorial serif typography. Output a VERY WIDE EXACT 3:1 landscape banner (target 960x320 px, or larger with exactly 3:1 ratio). Distinct and editorial composition: a prominent terracotta rounded square containing cream lowercase serif 'a.' as its real emblem, followed by a gracefully kerned lowercase wordmark 'artgian' in dark warm serif and a small clean uppercase 'CRM' in terracotta. Beneath the wordmark, a modest airy uppercase sans-serif descriptor, EXACT text 'CENTRAL DE PEDIDOS'. Center this complete identity horizontally with generous flat paper negative space around it. A very thin short terracotta underline beneath the descriptor creates a tasteful editorial finish. Keep entire composition vertically centered, ample inset margins. Beautiful crisp typographic brand work. Do not use an AS monogram, navy, gold, spheres, generic tech icons, gradients, texture, photographic effects, shadows, mockups, or extraneous elements. Only exact text 'a.', 'artgian', 'CRM', 'CENTRAL DE PEDIDOS'. No notifications text or Mibess branding. One banner, exceptionally clean and readable at WhatsApp thumbnail size.",
+      "reference": null
+    },
+    {
+      "key": "sistema-comercial",
+      "prompt": "Use case: logo-brand. Create a finished minimal identity banner for Sistema Comercial, reflecting its actual business software identity: deep forest green #174b42, pale sage-paper #f6f8f5, sober modern clean sans-serif type. Output a very wide EXACT 3:1 landscape image (target 960x320 px, or larger at exactly 3:1). A clearly distinct layout: solid deep green canvas; at the left a restrained thin sage outlined square with gently rounded corners enclosing bold simple sans-serif initials 'SC'. To the right, the exact brand name 'Sistema Comercial' in large warm-white modern sans-serif, aligned precisely with the symbol. Below it in smaller spaced sage sans-serif, exact text 'PLATAFORMA COMERCIAL'. On far right edge, a small motif of three sparse thin stepped horizontal strokes in muted sage suggests organized business activity; flat, subtle, not a chart, no arrows. Plenty of negative space, vertically centered and inset margins, carefully balanced single horizontal lockup. Flat colors, no noise, no gradients, no shadows, no 3D, no faux mockup. Only text 'SC', 'Sistema Comercial', 'PLATAFORMA COMERCIAL'. No notification wording, no Mibess. Beautiful understated enterprise identity, readable at small WhatsApp size.",
+      "reference": null
+    },
+    {
+      "key": "ia-jud",
+      "prompt": "Use case: logo-brand. Create a new minimal, elegant notification identity banner for a legal AI application named exactly 'IA-Jud'. This application does not have an existing visual reference; create a distinctive restrained legal-tech identity. Output a very wide EXACT 3:1 landscape image (target 960x320 px, or larger at exactly 3:1). Use a light cool pearl #f4f3f8 canvas, ink plum #302641 and a muted lavender #8973ac accent. Strong typographic composition: large precise 'IA-Jud' lettering in a contemporary refined serif, centered across the banner, with a very small lavender circular dot above a single hairline horizontal balance motif at the left of the wordmark, implying careful legal balance without a literal justice scale, gavel, columns or robot. Under the brand name set small tracked sans-serif exact text 'INTELIGÊNCIA JURÍDICA'. Keep the whole lockup visually centered, ample negative space, all elements safely inset within compact height. No border, no busy decorations, no gradients, no shadows, no textures, no photography, no mockup. Only exact text 'IA-Jud' and 'INTELIGÊNCIA JURÍDICA'. No Mibess and no notifications text. Distinct from a gold creative studio, terracotta CRM or green business platform. Beautiful timeless graphic identity crisp and readable at WhatsApp thumbnail size.",
+      "reference": null
+    }
+  ]
+}
