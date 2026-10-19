@@ -13,7 +13,7 @@
     >
     <div class="story-content">
       <span class="eyebrow light">CADA EVENTO IMPORTA</span>
-      <h1>
+      <h1 tabindex="-1">
         A conexão entre<br />o que acontece<br />e quem precisa saber<span
           >.</span
         >
@@ -83,19 +83,20 @@
       </div>
       <span class="workspace-dot"></span>
     </div>
-    <span class="nav-caption">WORKSPACE</span>
+
     <nav aria-label="Menu principal">
-      @for(n of nav;track n.id){@if(n.id==='contacts'){
-      <div class="nav-divider"></div>
-      }@if(n.id==='webhooks'){
-      <div class="nav-divider"></div>
-      }@if(n.id!=='manual'||canOperate()){<button
-        [class.active]="page()===n.id"
-        (click)="navigate(n.id)"
-        [attr.aria-current]="page()===n.id?'page':null"
+      @for(n of nav;track n.id){
+      @if(n.id==='dashboard'||n.id==='applications'||n.id==='webhooks'){
+      <span class="nav-caption"
+        >{{n.id==='dashboard'?'OPERAÇÃO':n.id==='applications'?'CONFIGURAÇÃO':'SISTEMA'}}</span
       >
-        <app-icon [name]="n.icon" /><span>{{n.name}}</span
-        >@if(n.id==='notifications'&&metrics().FAILED){<b class="nav-count"
+      } @if(n.id!=='manual'||canOperate()){<button
+        [class.active]="navActive(n.id)"
+        (click)="navigate(n.id)"
+        [attr.aria-current]="navActive(n.id)?'page':null"
+      >
+        <app-icon [name]="n.icon" /><span>{{n.name}}</span>
+        @if(n.id==='notifications'&&metrics().FAILED){<b class="nav-count"
           >{{metrics().FAILED}}</b
         >}</button
       >}}
@@ -153,6 +154,11 @@
           <p>{{descriptions[page()]}}</p>
         </div>
         <div class="heading-actions">
+          @if((page()==='dashboard'||page()==='applications')&&isAdmin()){
+          <button class="btn primary" (click)="navigate('integration')">
+            <app-icon name="plus" />Nova integração</button
+          >}
+
           <button
             class="btn"
             aria-label="Atualizar"
@@ -189,7 +195,7 @@
         </button>
       </div>
       }
-      @if(page()==='dashboard'||!isResource()&&page()!=='settings'&&page()!=='manual'){
+      @if(page()==='dashboard'||!isResource()&&page()!=='settings'&&page()!=='manual'&&page()!=='integration'){
       <div class="filters">
         <div class="filter-label">
           <span class="filter-lines">☷</span>Filtrar por
@@ -219,7 +225,7 @@
         >
           <option value="">Todos os status</option>
           @for(s of
-          (page()==='notifications'?['PENDING','QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED']:['ACCEPTED','PROCESSED','NO_MATCH','FAILED']);track
+          (page()==='notifications'?['PENDING','QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED']:['ACCEPTED','PROCESSED','NO_MATCH','SKIPPED','FAILED']);track
           s){
           <option [value]="s">{{label(s)}}</option>
           }</select
@@ -230,14 +236,30 @@
           (ngModelChange)="refreshFilters()"
         >
           <option value="today">Hoje</option>
+          <option value="24h">Últimas 24 horas</option>
           <option value="7d">Últimos 7 dias</option>
           <option value="30d">Últimos 30 dias</option>
           <option value="all">Todo o período</option>
         </select>
       </div>
-      } @if(page()==='manual'){
+      } @if(page()==='integration'){ @if(isAdmin()) {<app-integration-wizard
+        [userId]="user().email"
+        (exit)="navigate($event)"
+      />} @else {
+      <p class="manual-notice">O assistente exige acesso de administrador.</p>
+      } } @else if(page()==='manual'){
       <ng-container *ngTemplateOutlet="manualPage"></ng-container>
-      } @else if(page()==='dashboard'){
+      } @else if(page()==='dashboard'){ @if(noMatchTotal()){
+      <section class="panel integration-alert" aria-label="Eventos sem envio">
+        <h2>{{noMatchTotal()}} evento(s) sem destinatário neste período</h2>
+        <p>Veja por que a integração não enviou e corrija a configuração.</p>
+        @for(event of noMatchEvents().slice(0,3);track event.id){
+        <button class="text-button" (click)="showEvent(event.id)">
+          {{event.type}} · {{label(event.error_code||'NO_MATCH')}}
+          <app-icon name="arrow" /></button
+        >}
+      </section>
+      }
       <section class="metrics-grid" aria-label="Indicadores">
         <article class="metric-card">
           <div class="metric-top">
@@ -370,11 +392,35 @@
             Conecte uma aplicação, defina as regras e acompanhe cada entrega.
           </p>
         </div>
-        <button class="btn" (click)="navigate('applications')">
-          Gerenciar aplicações<app-icon name="arrow" />
+        <button
+          class="btn"
+          (click)="navigate(isAdmin()?'integration':'applications')"
+        >
+          {{isAdmin()?'Nova integração':'Ver integrações'}}<app-icon
+            name="arrow"
+          />
         </button>
       </section>
-      } @else if(isResource()){
+      } @else if(isResource()){ @if(page()==='contacts'||page()==='groups'){
+      <nav class="resource-tabs" aria-label="Destinatários">
+        <button
+          class="btn"
+          [class.primary]="page()==='contacts'"
+          [attr.aria-current]="page()==='contacts'?'page':null"
+          (click)="navigate('contacts')"
+        >
+          Contatos
+        </button>
+        <button
+          class="btn"
+          [class.primary]="page()==='groups'"
+          [attr.aria-current]="page()==='groups'?'page':null"
+          (click)="navigate('groups')"
+        >
+          Grupos
+        </button>
+      </nav>
+      }
       <section class="panel resource-panel">
         <div class="list-toolbar">
           <div class="search-input">
@@ -413,8 +459,7 @@
               <tr>
                 <th>Nome</th>
                 <th>
-                  {{page()==='rules'?'Evento':page()==='contacts'?'Contato':page()==='templates'?'Template
-                  Meta':page()==='groups'?'Membros':'Configuração'}}
+                  {{page()==='rules'?'Evento':page()==='contacts'?'Contato':page()==='templates'?'Template':page()==='groups'?'Membros':'Configuração'}}
                 </th>
                 <th>Status</th>
                 <th>Atualização</th>
@@ -439,7 +484,8 @@
                 </td>
                 <td>
                   @switch(page()){@case('rules'){<span class="code-text"
-                    >{{row.spec.eventType}}</span
+                    >{{(row.spec.eventTypes||[row.spec.eventType]).join(',
+                    ')}}</span
                   ><small class="cell-sub"
                     >{{name('channels',row.spec.channelConnectionId)}}</small
                   >}@case('contacts'){<span>{{mask(row.spec.phone)}}</span
@@ -475,7 +521,17 @@
                 </td>
                 <td>
                   <div class="row-actions">
-                    @if(page()==='applications'&&isAdmin()){<button
+                    @if(page()==='applications'){<button
+                      class="text-button"
+                      (click)="showHealth(row)"
+                    >
+                      Saúde</button
+                    >} @if(page()==='rules'&&canOperate()){<button
+                      class="text-button"
+                      (click)="startRuleTest(row)"
+                    >
+                      Testar</button
+                    >} @if(page()==='applications'&&isAdmin()){<button
                       class="icon-button"
                       title="Gerenciar API keys"
                       aria-label="Gerenciar API keys"
@@ -614,6 +670,12 @@
           <div class="empty-icon"><app-icon [name]="page()" /></div>
           <h3>Nenhum registro neste período</h3>
           <p>Os registros aparecerão aqui conforme sua operação acontece.</p>
+          @if(isAdmin()&&page()==='events'){<button
+            class="btn primary"
+            (click)="navigate('integration')"
+          >
+            Configurar integração</button
+          >}
         </div>
         }@else{
         <div class="table-scroll">
@@ -788,6 +850,8 @@
   role="dialog"
   aria-modal="true"
   aria-labelledby="editor-title"
+  dialogFocus
+  (dialogClose)="editor.set(false)"
 >
   <div class="drawer-header">
     <div>
@@ -846,7 +910,74 @@
             [(ngModel)]="form.spec[field.key]"
             [disabled]="!isAdmin()"
           />{{field.label}}</label
-        >}@case('members'){<label>{{field.label}}</label>
+        >}@case('priorities'){
+        <fieldset class="event-choices">
+          <legend>{{field.label}}</legend>
+          @for(type of form.spec.eventTypes||[];track
+          type){@if(!type.includes('*')){<label
+            >{{type}}<select
+              [name]="'priority-'+type"
+              [(ngModel)]="form.spec.eventPriorities[type]"
+              [disabled]="!isAdmin()"
+            >
+              <option value="">Usar prioridade padrão</option>
+              <option value="LOW">Baixa</option>
+              <option value="NORMAL">Normal</option>
+              <option value="HIGH">Alta</option>
+              <option value="CRITICAL">Crítica</option>
+            </select></label
+          >}}
+        </fieldset>
+        }@case('events'){
+        <fieldset class="event-choices">
+          <legend>{{field.label}}</legend>
+          <p class="subtle">
+            Selecione até 50 tipos. Prefixos como CRM_* incluem novos eventos
+            automaticamente.
+          </p>
+          @for(event of catalog();track event.eventType){<label
+            class="checkbox-label"
+            ><input
+              type="checkbox"
+              [checked]="form.spec.eventTypes.includes(event.eventType)"
+              (change)="toggleEvent(event.eventType)"
+              [disabled]="!isAdmin()"
+            />{{event.eventType}}<small
+              >{{event.lastReceivedAt|date:'dd/MM HH:mm'}}</small
+            ></label
+          >} @if(!catalog().length){
+          <p class="subtle">
+            Nenhum evento recebido ainda. Adicione os tipos esperados abaixo.
+          </p>
+          }
+          <label
+            >Adicionar tipo ou prefixo<input
+              name="customEvent"
+              [(ngModel)]="customEventType"
+              placeholder="CRM_SYNC_RECOVERED ou CRM_*"
+              [disabled]="!isAdmin()"
+          /></label>
+          <button
+            class="btn small"
+            type="button"
+            (click)="addEvent()"
+            [disabled]="!isAdmin()"
+          >
+            Adicionar evento
+          </button>
+          <div class="selected-events">
+            @for(type of form.spec.eventTypes;track type){<button
+              type="button"
+              class="btn small"
+              [disabled]="!isAdmin()"
+              (click)="toggleEvent(type)"
+              [attr.aria-label]="'Remover '+type"
+            >
+              {{type}} ×</button
+            >}
+          </div>
+        </fieldset>
+        }@case('members'){<label>{{field.label}}</label>
         <div class="member-list">
           @for(c of choices(field);track c.id){<label class="checkbox-label"
             ><input
@@ -924,6 +1055,7 @@
           >}@else if(field.type==='ref'||field.type==='target'){<select
             [name]="field.key"
             [(ngModel)]="form.spec[field.key]"
+            (ngModelChange)="field.key==='applicationId'&&loadCatalog($event)"
             [required]="!!field.required"
             [disabled]="!isAdmin()"
           >
@@ -952,11 +1084,33 @@
         </p>
       </div>
       }@if(page()==='templates'){
+      <label
+        >Catálogo de variáveis da aplicação<select
+          name="catalogApplication"
+          [(ngModel)]="catalogApp"
+          (ngModelChange)="loadCatalog($event)"
+        >
+          <option value="">Selecione uma aplicação</option>
+          @for(app of resources()['applications'];track app.id){
+          <option [value]="app.id">{{app.name}}</option>
+          }
+        </select></label
+      >
+      @if(catalog().length){
+      <p class="subtle">Campos recebidos: {{catalogFields.join(', ')}}</p>
+      } @if(missingTemplateVariables.length){
+      <p class="manual-notice" role="status">
+        Variáveis ausentes nos últimos eventos:
+        {{missingTemplateVariables.join('; ')}}. Campos nulos também impedem o
+        envio.
+      </p>
+      }
       <div class="info-note">
         <app-icon name="templates" />
         <p>
-          O status deve corresponder à aprovação na Meta. Alterá-lo aqui não
-          submete nem aprova o template no provider.
+          Na Evolution, APPROVED representa revisão local. Na Meta, use um
+          template realmente aprovado; alterar este cadastro não aprova o
+          template no provider.
         </p>
       </div>
       }
@@ -977,6 +1131,8 @@
   role="dialog"
   aria-modal="true"
   aria-labelledby="detail-title"
+  dialogFocus
+  (dialogClose)="detail.set(null)"
 >
   <div class="drawer-header">
     <div>
@@ -1064,11 +1220,78 @@
     </div>
     }@empty{
     <p class="subtle">Nenhuma tentativa de envio realizada.</p>
-    }}@else{
+    }}@else if(detail().event){
+    <span class="chip" [ngClass]="statusClass(detail().event.status)"
+      >{{label(detail().event.status)}}</span
+    >
+    <h3>{{detail().event.type}}</h3>
+    <h3 class="section-title">Por que não enviou?</h3>
+    <p>
+      {{label(detail().event.error_code||detail().event.routing_diagnostics?.reason||'Nenhum
+      problema de roteamento registrado.')}}
+    </p>
+    @if(detail().event.error_code==='APPLICATION_DISABLED'){<button
+      class="btn"
+      (click)="openResource('applications',detail().event.application_id)"
+    >
+      Corrigir aplicação</button
+    >} @if(detail().event.error_code==='NO_RULE_FOR_EVENT_TYPE'){<button
+      class="btn"
+      (click)="openResource('rules')"
+    >
+      Criar regra</button
+    >} @for(rule of detail().event.routing_diagnostics?.rules||[];track
+    rule.ruleId){
+    <article class="attempt-card diagnostic-card">
+      <strong>{{rule.ruleCode}}</strong>
+      <p>{{label(rule.code)}}</p>
+      <button class="text-button" (click)="openResource('rules',rule.ruleId)">
+        Ver regra
+      </button>
+      @if(rule.targetId&&rule.code==='NO_ACTIVE_RECIPIENTS'){<button
+        class="text-button"
+        (click)="openResource(rule.targetType==='CONTACT'?'contacts':'groups',rule.targetId)"
+      >
+        {{rule.targetType==='CONTACT'?'Corrigir contato':'Corrigir grupo'}}</button
+      >}
+    </article>
+    }
+    <h3 class="section-title">Histórico do evento</h3>
+    <ol class="timeline">
+      @for(item of detail().timeline||[];track item.id){
+      <li>
+        <span class="timeline-marker"><app-icon name="check" /></span>
+        <div>
+          <strong>{{label(item.status||item.action)}}</strong>
+          <p>{{item.description}}</p>
+          <time>{{item.created_at|date:'dd/MM/yyyy HH:mm:ss'}}</time>
+        </div>
+      </li>
+      }
+    </ol>
+    <details>
+      <summary>Payload recebido</summary>
+      <pre class="record-json">{{detail().event.payload|json}}</pre>
+    </details>
+    @if(detail().notifications?.length){
+    <h3 class="section-title">Notificações geradas</h3>
+    @for(notification of detail().notifications;track notification.id){<button
+      class="text-button"
+      (click)="openNotification(notification.id)"
+    >
+      {{mask(notification.recipient_address)}} · {{label(notification.status)}}</button
+    >}} }@else{
     <pre class="record-json">{{detail().record|json}}</pre>
     }
   </div>
   <div class="drawer-footer">
+    @if(detail().event&&['NO_MATCH','SKIPPED'].includes(detail().event.status)&&canOperate()){<button
+      class="btn primary"
+      [disabled]="saving()"
+      (click)="reprocess()"
+    >
+      Reprocessar</button
+    >}
     <button class="btn" (click)="detail.set(null)">Fechar</button
     >@if(detail().notification?.status==='FAILED'&&canOperate()){<button
       class="btn primary"
@@ -1086,6 +1309,8 @@
   role="dialog"
   aria-modal="true"
   aria-labelledby="keys-title"
+  dialogFocus
+  (dialogClose)="keyDialog.set(null);newKey.set('')"
 >
   <div class="drawer-header">
     <div>
@@ -1369,3 +1594,171 @@
   </div>
   }
 </ng-template>
+
+@if(health()){
+<div class="modal-backdrop" (click)="health.set(null)"></div>
+<section
+  class="drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="health-title"
+  dialogFocus
+  (dialogClose)="health.set(null)"
+>
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow">{{health().application.name}}</span>
+      <h2 id="health-title">Saúde da integração</h2>
+    </div>
+    <button
+      class="icon-button"
+      aria-label="Fechar saúde"
+      (click)="health.set(null)"
+    >
+      <app-icon name="close" />
+    </button>
+  </div>
+  <div class="drawer-body">
+    <p>
+      Último evento:
+      {{health().lastEventAt?(health().lastEventAt|date:'dd/MM/yyyy
+      HH:mm'):'Ainda não recebido'}}.
+    </p>
+    <p>{{health().noMatch24h||0}} evento(s) sem envio nas últimas 24 horas.</p>
+    @for(check of health().checks||[];track $index){
+    <article class="health-check">
+      <span
+        class="chip"
+        [class.success]="check.status==='OK'"
+        [class.danger]="check.status==='ERROR'"
+        [class.warning]="check.status==='WARNING'||check.status==='UNKNOWN'"
+        >{{check.status==='OK'?'Em
+        ordem':check.status==='UNKNOWN'?'Verificar':check.status==='ERROR'?'Corrigir':'Atenção'}}</span
+      >
+      <p>{{check.message}}</p>
+      @if(check.resourceKind){<button
+        class="text-button"
+        (click)="resolveHealth(check)"
+      >
+        {{check.status==='OK'?'Ver configuração':'Resolver'}}</button
+      >}
+    </article>
+    }
+  </div>
+  <div class="drawer-footer">
+    <button class="btn" (click)="showHealth(health().application)">
+      Atualizar saúde</button
+    ><button class="btn" (click)="health.set(null)">Fechar</button>
+  </div>
+</section>
+} @if(testingRule()){
+<div class="modal-backdrop" (click)="testingRule.set(null)"></div>
+<section
+  class="drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="rule-test-title"
+  dialogFocus
+  (dialogClose)="testingRule.set(null)"
+>
+  <div class="drawer-header">
+    <div>
+      <span class="eyebrow">{{testingRule()!.name}}</span>
+      <h2 id="rule-test-title">Testar regra</h2>
+    </div>
+    <button
+      class="icon-button"
+      aria-label="Fechar teste"
+      (click)="testingRule.set(null)"
+    >
+      <app-icon name="close" />
+    </button>
+  </div>
+  <div class="drawer-body">
+    <p>
+      A simulação não envia mensagens. Usa o último evento recebido ou o exemplo
+      informado.
+    </p>
+    @if(error()){
+    <p class="error" role="alert">{{error()}}</p>
+    }
+    <label
+      >Tipo do evento<input
+        [(ngModel)]="testEventType"
+        list="test-event-types"
+        placeholder="CRM_NOTIFY_TEST"
+    /></label>
+    <datalist id="test-event-types">
+      @for(event of catalog();track event.eventType){
+      <option [value]="event.eventType"></option>
+      }
+    </datalist>
+    <label
+      >Dados de exemplo (JSON, opcional)<textarea
+        [(ngModel)]="testData"
+        rows="6"
+        placeholder='{"title":"Teste","message":"Mensagem de exemplo","url":"https://exemplo.com"}'
+      ></textarea>
+    </label>
+    <button class="btn primary" [disabled]="saving()" (click)="simulateRule()">
+      Simular regra
+    </button>
+    @if(ruleTest()){
+    <h3 class="section-title">
+      {{ruleTest().matched?'Regra corresponde ao evento':'Regra não corresponde
+      ao evento'}}
+    </h3>
+    @for(problem of ruleTest().problems||[];track $index){
+    <p class="manual-notice">
+      {{problem.message||label(problem.code)}} @if(problem.resourceKind){<button
+        class="text-button"
+        (click)="openResource(problem.resourceKind,problem.resourceId)"
+      >
+        Corrigir</button
+      >}
+    </p>
+    }
+    <h3 class="section-title">Mensagem renderizada</h3>
+    <pre class="message-preview">
+{{ruleTest().renderedMessage||'Não foi possível renderizar a mensagem.'}}</pre>
+    <h3 class="section-title">Destinatários resolvidos</h3>
+    @for(recipient of ruleTest().recipients||[];track $index){
+    <p>
+      {{recipient.name}} · {{mask(recipient.address)}} @for(problem of
+      recipient.problems||[];track $index){<small class="red-text"
+        >{{label(problem.code||problem)}}</small
+      >}
+    </p>
+    }@empty{
+    <p>Nenhum destinatário ativo resolvido.</p>
+    }
+    <h3 class="section-title">Enviar um teste real</h3>
+    <p>
+      Escolha apenas um contato. A próxima tela mostra a prévia e exige
+      confirmação antes do envio.
+    </p>
+    <label
+      >Contato do teste<select [(ngModel)]="testContactId">
+        <option value="">Selecione um contato</option>
+        @for(contact of resources()['contacts']||[];track
+        contact.id){@if(contact.enabled){
+        <option [value]="contact.id">
+          {{contact.name}} · {{contact.spec.phone}}
+        </option>
+        }}
+      </select></label
+    >
+    <button
+      class="btn"
+      [disabled]="!testContactId||saving()"
+      (click)="reviewRuleSend()"
+    >
+      Revisar envio para este contato
+    </button>
+    }
+  </div>
+  <div class="drawer-footer">
+    <button class="btn" (click)="testingRule.set(null)">Fechar</button>
+  </div>
+</section>
+}

@@ -129,6 +129,8 @@ public class ResourceController {
       case RULES -> Set.of(
         "applicationId",
         "eventType",
+        "eventTypes",
+        "eventPriorities",
         "targetType",
         "targetId",
         "channelConnectionId",
@@ -246,7 +248,7 @@ public class ResourceController {
       }
       case RULES -> {
         reference(Kind.APPLICATIONS, w, spec.path("applicationId").asText());
-        required(spec, "eventType");
+        com.mibess.notify.routing.EventTypes.validateAndNormalize(spec);
         var channel = reference(
           Kind.CHANNELS,
           w,
@@ -272,6 +274,30 @@ public class ResourceController {
           Set.of("CONTACT", "CONTACT_GROUP", "EVENT_RECIPIENT")
         );
         oneOf(spec, "priority", Set.of("LOW", "NORMAL", "HIGH", "CRITICAL"));
+        if (spec.has("eventPriorities")) {
+          var priorities = spec.path("eventPriorities");
+          if (
+            !priorities.isObject() || priorities.size() > 50
+          ) throw new IllegalArgumentException(
+            "eventPriorities deve mapear até 50 tipos de evento"
+          );
+          priorities.fields().forEachRemaining(entry -> {
+            if (
+              !com.mibess.notify.routing.EventTypes.validExact(
+                entry.getKey()
+              ) ||
+              !com.mibess.notify.routing.EventTypes.matches(
+                spec,
+                entry.getKey()
+              ) ||
+              !Set.of("LOW", "NORMAL", "HIGH", "CRITICAL").contains(
+                entry.getValue().asText()
+              )
+            ) throw new IllegalArgumentException(
+              "Prioridade específica exige tipo coberto pela regra e prioridade válida"
+            );
+          });
+        }
         if (spec.path("targetType").asText().equals("CONTACT")) reference(
           Kind.CONTACTS,
           w,

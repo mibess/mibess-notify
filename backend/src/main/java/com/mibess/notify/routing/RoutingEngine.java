@@ -5,8 +5,8 @@ import com.mibess.notify.contact.ConsentService;
 import com.mibess.notify.shared.*;
 import com.mibess.notify.shared.ResourceStore.*;
 import com.mibess.notify.template.TemplateRenderer;
+import java.time.Instant;
 import java.util.*;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +31,7 @@ public class RoutingEngine {
     this.consent = consent;
   }
 
-  record Recipient(
+  public record Recipient(
     UUID contactId,
     String name,
     String address,
@@ -50,19 +50,54 @@ public class RoutingEngine {
     UUID workspace = (UUID) event.get("workspace_id"),
       app = (UUID) event.get("application_id");
     JsonNode payload = json.read(event.get("payload").toString());
-    int count = 0;
+    var diagnostics = json.object();
+    diagnostics.put("evaluatedAt", Instant.now().toString());
+    diagnostics.put("applicationId", app.toString());
+    diagnostics.put("eventType", event.get("type").toString());
+    var evaluated = diagnostics.putArray("rules");
     if (!store.get(Kind.APPLICATIONS, workspace, app).enabled()) {
-      finish(eventId, "SKIPPED", "APPLICATION_DISABLED");
+      finish(eventId, "SKIPPED", "APPLICATION_DISABLED", diagnostics);
       return;
     }
-    for (Resource rule : store.list(Kind.RULES, workspace)) {
+    String reason = "NO_RULE_FOR_EVENT_TYPE";
+    int specificity = 0;
+    for (Resource rule : store.rulesForApplication(workspace, app)) {
       var s = rule.spec();
-      if (
-        !rule.enabled() ||
-        !s.path("applicationId").asText().equals(app.toString()) ||
-        !s.path("eventType").asText().equals(event.get("type"))
-      ) continue;
-      if (!Conditions.matches(payload, s.path("conditions"))) continue;
+      var diagnostic = evaluated.addObject();
+      diagnostic.put("ruleId", rule.id().toString());
+      diagnostic.put("ruleCode", rule.code());
+      diagnostic.put("targetType", s.path("targetType").asText());
+      diagnostic.put("targetId", s.path("targetId").asText());
+      diagnostic.put("recipientCount", 0);
+      if (!EventTypes.matches(s, event.get("type").toString())) {
+        diagnostic.put("code", "EVENT_TYPE_NOT_MATCHED");
+        continue;
+      }
+      if (!rule.enabled()) {
+        diagnostic.put("code", "RULE_DISABLED");
+        if (specificity < 1) {
+          reason = "RULE_DISABLED";
+          specificity = 1;
+        }
+        continue;
+      }
+      if (!Conditions.matches(payload, s.path("conditions"))) {
+        diagnostic.put("code", "CONDITIONS_NOT_MET");
+        if (specificity < 2) {
+          reason = "CONDITIONS_NOT_MET";
+          specificity = 2;
+        }
+        continue;
+      }
+      var recipients = resolve(workspace, s, payload);
+      diagnostic.put("recipientCount", recipients.size());
+      if (recipients.isEmpty()) {
+        diagnostic.put("code", "NO_ACTIVE_RECIPIENTS");
+        reason = "NO_ACTIVE_RECIPIENTS";
+        specificity = 3;
+        continue;
+      }
+      diagnostic.put("code", "MATCHED");
       var channel = store.get(
         Kind.CHANNELS,
         workspace,
@@ -73,7 +108,7 @@ public class RoutingEngine {
         workspace,
         UUID.fromString(s.path("templateId").asText())
       );
-      for (Recipient recipient : resolve(workspace, s, payload)) {
+      for (Recipient recipient : recipients) {
         String state = "PENDING",
           error = null;
         List<String> parameters = List.of();
@@ -127,13 +162,18 @@ public class RoutingEngine {
           .param("type", s.path("targetType").asText())
           .param("name", recipient.name())
           .param("address", recipient.address())
-          .param("priority", s.path("priority").asText("NORMAL"))
+          .param(
+            "priority",
+            s
+              .path("eventPriorities")
+              .path(event.get("type").toString())
+              .asText(s.path("priority").asText("NORMAL"))
+          )
           .param("status", state)
           .param("command", json.write(command))
           .param("error", error)
           .update();
         if (inserted > 0) {
-          count++;
           timeline(
             id,
             "EVENT_RECEIVED",
@@ -155,10 +195,21 @@ public class RoutingEngine {
         }
       }
     }
-    finish(eventId, count == 0 ? "NO_MATCH" : "PROCESSED", null);
+    // Count persisted rows, including conflicts from a previous attempt.
+    long count = db
+      .sql("SELECT count(*) FROM notifications WHERE event_id=:id")
+      .param("id", eventId)
+      .query(Long.class)
+      .single();
+    finish(
+      eventId,
+      count == 0 ? "NO_MATCH" : "PROCESSED",
+      count == 0 ? reason : null,
+      diagnostics
+    );
   }
 
-  private List<Recipient> resolve(UUID w, JsonNode rule, JsonNode payload) {
+  public List<Recipient> resolve(UUID w, JsonNode rule, JsonNode payload) {
     String type = rule.path("targetType").asText();
     List<Recipient> result = new ArrayList<>();
     if (type.equals("EVENT_RECIPIENT")) {
@@ -167,9 +218,7 @@ public class RoutingEngine {
       try {
         phone = ConsentService.phone(r.path("phone").asText());
       } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException(
-          "EVENT_RECIPIENT sem telefone válido"
-        );
+        return List.of();
       }
       var existing = store.contactByPhone(w, phone);
       if (existing.isPresent()) {
@@ -197,7 +246,19 @@ public class RoutingEngine {
         if (c.enabled()) result.add(contact(c));
       }
     }
-    return result;
+    return result
+      .stream()
+      .collect(
+        java.util.stream.Collectors.toMap(
+          Recipient::address,
+          r -> r,
+          (first, ignored) -> first,
+          LinkedHashMap::new
+        )
+      )
+      .values()
+      .stream()
+      .toList();
   }
 
   private Recipient contact(Resource c) {
@@ -209,13 +270,29 @@ public class RoutingEngine {
     );
   }
 
-  private void finish(UUID id, String state, String error) {
+  private void finish(
+    UUID id,
+    String state,
+    String error,
+    com.fasterxml.jackson.databind.node.ObjectNode diagnostics
+  ) {
+    if (error == null) diagnostics.putNull("reason");
+    else diagnostics.put("reason", error);
     db.sql(
-      "UPDATE events SET status=:s,processed_at=now(),error_code=:error WHERE id=:id"
+      "UPDATE events SET status=:s,processed_at=now(),error_code=:error,routing_diagnostics=CAST(:diagnostics AS jsonb) WHERE id=:id"
     )
       .param("s", state)
       .param("id", id)
       .param("error", error)
+      .param("diagnostics", json.write(diagnostics))
+      .update();
+    db.sql(
+      "INSERT INTO event_timeline(event_id,status,description,details) VALUES(:id,:s,:d,CAST(:details AS jsonb))"
+    )
+      .param("id", id)
+      .param("s", state)
+      .param("d", error == null ? "Roteamento concluído" : error)
+      .param("details", json.write(diagnostics))
       .update();
   }
 

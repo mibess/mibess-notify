@@ -69,6 +69,42 @@ public class WhatsAppEvolutionProvider implements ChannelProvider {
     );
   }
 
+  @Override
+  public String healthCheck(Resource connection) {
+    if (!validateConfiguration(connection)) return "NOT_CONFIGURED";
+    try {
+      var request = HttpRequest.newBuilder(
+        URI.create(
+          baseUrl +
+            "/instance/connectionState/" +
+            connection.spec().path("instanceName").asText()
+        )
+      )
+        .timeout(Duration.ofSeconds(5))
+        .header("apikey", credentials(connection).path("apiKey").asText())
+        .GET()
+        .build();
+      var response = http.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() != 200) return "UNKNOWN";
+      String state = json
+        .read(response.body())
+        .path("instance")
+        .path("state")
+        .asText();
+      // An open Baileys state alone has previously hidden a broken transport in production.
+      return switch (state) {
+        case "open" -> "OPEN_UNVERIFIED";
+        case "close", "closed", "connecting" -> "DISCONNECTED";
+        default -> "UNKNOWN";
+      };
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return "UNKNOWN";
+    } catch (java.io.IOException | IllegalArgumentException e) {
+      return "UNKNOWN";
+    }
+  }
+
   public Result send(SendCommand command) {
     var c = command.connection();
     if (!validateConfiguration(c)) throw new DeliveryFailure(

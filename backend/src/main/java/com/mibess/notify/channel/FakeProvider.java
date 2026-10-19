@@ -17,6 +17,10 @@ public class FakeProvider implements ChannelProvider {
     return new Result("fake." + UUID.randomUUID(), 200);
   }
 
+  public String healthCheck(Resource connection) {
+    return "FAKE_READY";
+  }
+
   public boolean validateConfiguration(Resource connection) {
     return true;
   }

@@ -53,3 +53,25 @@ POST `/admin/notifications/manual/preview` e POST `/admin/notifications/manual` 
 Preview resolve os cadastros no workspace, valida consentimento/suppression/canal, renderiza o conteúdo e retorna `previewHash`, destinatário, telefone, remetente e texto. A confirmação envia o mesmo corpo com previewHash; alterações invalidam a prévia (409). Retorna 202 `{notificationId,status,duplicate:false}` ou 200 com o mesmo ID para repetição idêntica. Mesmo requestId com outro conteúdo retorna 409, inclusive em chamadas concorrentes.
 
 A notificação manual tem source MANUAL, autor e contato, sem aplicação/evento/regra fictícios. Texto e parâmetros são uma fotografia da confirmação; retries preservam o conteúdo. O worker revalida consentimento, endereço, canal e template antes da chamada externa e cancela se a configuração mudou. Não dispara regras de negócio. A fila, outbox, tentativas, reconciliação de webhooks e suppression são compartilhadas com os envios por evento.
+
+## Diagnóstico e reprocessamento de eventos
+
+GET `/admin/events/{id}` retorna `{event,timeline,notifications}` no workspace da sessão. `event.routing_diagnostics` contém applicationId, eventType, evaluatedAt, reason e as regras avaliadas, com ruleId, ruleCode, targetType, targetId, recipientCount e code. Payloads históricos não são reescritos.
+
+Quando não há notificações, `error_code` identifica o ponto mais avançado alcançado: `NO_RULE_FOR_EVENT_TYPE`, `RULE_DISABLED`, `CONDITIONS_NOT_MET` ou `NO_ACTIVE_RECIPIENTS`. Aplicação desativada produz `SKIPPED` com `APPLICATION_DISABLED`. Regras de outra aplicação não participam da avaliação. Regras cujo tipo não corresponde aparecem no diagnóstico como `EVENT_TYPE_NOT_MATCHED`. Templates, canais ou consentimentos inválidos continuam gerando a notificação FAILED/CANCELLED correspondente, sem serem confundidos com ausência de regra.
+
+POST `/admin/events/{id}/reprocess`, ADMIN/OPERATOR e CSRF, aceita apenas NO_MATCH ou SKIPPED. Retorna o mesmo detalhe após rotear com os cadastros atuais. Registra `REPROCESS_REQUESTED`, o diagnóstico anterior e `EVENT_REPROCESSED` na auditoria. Lock no evento e a unicidade `(event_id,rule_id,recipient_address)` impedem duplicatas; chamadas concorrentes após um processamento bem-sucedido retornam 409. Não é retry de notificações já criadas.
+
+## Regras com vários tipos
+
+`spec.eventType` legado continua válido. `spec.eventTypes` aceita de 1 a 50 valores únicos UPPER_SNAKE_CASE ou prefixos terminados em `_ *` (sem espaço), como `CRM_*`. A lista, quando presente, define o conjunto roteado. `eventType` permanece um tipo exato coberto pela lista para a imagem anterior: é inferido do primeiro tipo exato ou deve ser informado quando a lista contém somente prefixos.
+
+`spec.priority` é o padrão; o mapa opcional `spec.eventPriorities` permite até 50 exceções por tipo exato coberto pela regra, com LOW/NORMAL/HIGH/CRITICAL. Exemplo: uma regra com os oito tipos CRM, `priority: NORMAL` e `eventPriorities: {"CRM_SYNC_FAILED":"HIGH"}`.
+
+## Catálogo, simulação e saúde
+
+- GET `/admin/applications/{id}/event-catalog`: lista `{eventType,lastReceivedAt,eventId,dataFields,sampleData}` do último evento recebido de cada tipo. Campos representam o payload recebido, não um schema obrigatório; ausência ou null ainda pode impedir renderização.
+- POST `/admin/rules/{id}/test`, ADMIN/OPERATOR e CSRF: corpo opcional `{eventType,data,recipient}`. Usa o evento mais recente coberto pela regra, ou os dados fornecidos. Retorna destinatários, mensagem renderizada, variáveis, matched e problemas de configuração/consentimento. Não cria evento nem notificação e não chama o envio do provider.
+- Enviar o teste de verdade exige escolher um contato, revisar `/admin/notifications/manual/preview` e confirmar `/admin/notifications/manual` com requestId e previewHash. O fluxo é o mesmo do envio manual, com um único destinatário.
+- GET `/admin/notifications/manual/requests/{requestId}`, ADMIN/OPERATOR: recupera o envio do próprio autor no workspace, sem repetir a confirmação depois de uma resposta perdida.
+- GET `/admin/applications/{id}/health`: checks com code/status/message/resourceKind/resourceId, último evento e contagem NO_MATCH de 24 h. Verifica chave, tipos sem regra, grupos/contatos, templates e canal. Evolution consulta somente connectionState: conexão fechada é erro; aberta não comprova entrega e permanece UNKNOWN até validação operacional. Meta também não é declarado conectado apenas por ter credenciais; FAKE_READY é usado exclusivamente em homologação/testes.

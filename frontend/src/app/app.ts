@@ -3,6 +3,8 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { Api, Resource, errorText } from "./api";
 import { IconComponent } from "./icon";
+import { DialogFocus } from "./dialog-focus";
+import { IntegrationWizard, validEventPattern } from "./integration-wizard";
 
 interface Field {
   key: string;
@@ -15,6 +17,16 @@ interface Field {
   hint?: string;
 }
 export const LABELS: Record<string, string> = {
+  NO_RULE_FOR_EVENT_TYPE: "Nenhuma regra para este tipo de evento",
+  RULE_DISABLED: "A regra está desativada",
+  CONDITIONS_NOT_MET: "As condições da regra não foram atendidas",
+  NO_ACTIVE_RECIPIENTS: "Não há destinatários ativos",
+  APPLICATION_DISABLED: "A aplicação está desativada",
+  REPROCESS_REQUESTED: "Reprocessamento solicitado",
+  REPROCESSED: "Evento reprocessado",
+  SKIPPED: "Ignorado",
+  MATCHED: "Regra correspondeu",
+  EVENT_TYPE_NOT_MATCHED: "Tipo do evento diferente",
   MANUAL_CREATED: "Envio manual criado",
   PENDING: "Pendente",
   QUEUED: "Na fila",
@@ -148,7 +160,7 @@ const FIELDS: Record<string, Field[]> = {
     { key: "providerTemplateId", label: "ID do template na Meta" },
     { key: "language", label: "Idioma", placeholder: "pt_BR", required: true },
     SELECT("category", "Categoria", ["UTILITY", "MARKETING", "AUTHENTICATION"]),
-    SELECT("status", "Status na Meta", [
+    SELECT("status", "Status do template", [
       "DRAFT",
       "PENDING",
       "APPROVED",
@@ -171,10 +183,15 @@ const FIELDS: Record<string, Field[]> = {
   rules: [
     REF("applicationId", "Aplicação", "applications"),
     {
-      key: "eventType",
-      label: "Evento de negócio",
-      placeholder: "ORDER_PAID",
+      key: "eventTypes",
+      label: "Eventos de negócio",
+      type: "events",
       required: true,
+    },
+    {
+      key: "eventType",
+      label: "Tipo exato para compatibilidade",
+      hint: "Para regras somente com prefixo, informe um tipo real coberto, como CRM_NOTIFY_TEST. Usado por versões anteriores.",
     },
     SELECT("targetType", "Destinatário", [
       "CONTACT_GROUP",
@@ -186,6 +203,11 @@ const FIELDS: Record<string, Field[]> = {
     REF("templateId", "Template", "templates"),
     SELECT("priority", "Prioridade", ["LOW", "NORMAL", "HIGH", "CRITICAL"]),
     {
+      key: "eventPriorities",
+      label: "Prioridade por evento",
+      type: "priorities",
+    },
+    {
       key: "conditions",
       label: "Condições · todas devem corresponder",
       type: "conditions",
@@ -195,7 +217,13 @@ const FIELDS: Record<string, Field[]> = {
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    IconComponent,
+    IntegrationWizard,
+    DialogFocus,
+  ],
   templateUrl: "./app.html",
 })
 export class AppComponent {
@@ -233,23 +261,37 @@ export class AppComponent {
   suppressionForm = { address: "", reason: "" };
   suppressions = signal<any[]>([]);
   users = signal<any[]>([]);
+  noMatchEvents = signal<any[]>([]);
+  noMatchTotal = signal(0);
+  catalog = signal<any[]>([]);
+  catalogApp = "";
+  health = signal<any>(null);
+  testingRule = signal<Resource | null>(null);
+  ruleTest = signal<any>(null);
+  testEventType = "";
+  testData = "";
+  testContactId = "";
+  customEventType = "";
   nav = [
     { id: "dashboard", name: "Visão geral", icon: "dashboard" },
-    { id: "applications", name: "Aplicações", icon: "apps" },
     { id: "events", name: "Eventos", icon: "events" },
     { id: "notifications", name: "Notificações", icon: "notifications" },
     { id: "manual", name: "Enviar notificação", icon: "send" },
-    { id: "rules", name: "Regras de envio", icon: "rules" },
-    { id: "contacts", name: "Contatos", icon: "contacts" },
-    { id: "groups", name: "Grupos", icon: "groups" },
+    { id: "applications", name: "Integrações", icon: "apps" },
+    { id: "contacts", name: "Destinatários", icon: "contacts" },
     { id: "channels", name: "Canais", icon: "channels" },
     { id: "templates", name: "Templates", icon: "templates" },
+    { id: "rules", name: "Regras", icon: "rules" },
     { id: "webhooks", name: "Webhooks", icon: "webhooks" },
     { id: "audit", name: "Auditoria", icon: "audit" },
     { id: "settings", name: "Configurações", icon: "settings" },
   ];
-  title = computed(
-    () => this.nav.find((n) => n.id === this.page())?.name || "Visão geral",
+  title = computed(() =>
+    this.page() === "integration"
+      ? "Nova integração"
+      : this.page() === "groups"
+        ? "Destinatários"
+        : this.nav.find((n) => n.id === this.page())?.name || "Visão geral",
   );
   filtered = computed(() =>
     this.items().filter((r) =>
@@ -264,6 +306,7 @@ export class AppComponent {
   descriptions: Record<string, string> = {
     dashboard: "Tudo o que acontece. Cada mensagem que chega.",
     applications: "Conecte seus sistemas por eventos de negócio.",
+    integration: "Configure uma vez por sistema e acompanhe cada etapa.",
     manual:
       "Escolha um contato, escreva sua mensagem e revise antes de enviar.",
     events: "A origem de cada notificação, em um só lugar.",
@@ -281,7 +324,7 @@ export class AppComponent {
     void this.initialize();
     window.addEventListener("hashchange", () => {
       const p = location.hash.replace("#/", "");
-      if (this.nav.some((n) => n.id === p) && p !== this.page()) {
+      if (this.validPage(p) && p !== this.page()) {
         this.page.set(p);
         void this.reload();
       }
@@ -292,7 +335,7 @@ export class AppComponent {
       await this.api.get("auth/csrf");
       this.user.set(await this.api.get("auth/me"));
       const p = location.hash.replace("#/", "");
-      if (this.nav.some((n) => n.id === p)) this.page.set(p);
+      if (this.validPage(p)) this.page.set(p);
       await this.reload();
     } catch {
       this.user.set(null);
@@ -344,6 +387,9 @@ export class AppComponent {
     }
   }
   navigate(id: string) {
+    if (!this.validPage(id)) return;
+    this.editor.set(false);
+    this.detail.set(null);
     this.page.set(id);
     location.hash = "/" + id;
     this.index.set(0);
@@ -352,6 +398,23 @@ export class AppComponent {
     this.error.set("");
     void this.reload();
     this.mobile.set(false);
+    setTimeout(
+      () => document.querySelector<HTMLElement>("main h1")?.focus(),
+      0,
+    );
+  }
+  validPage(id: string) {
+    return (
+      this.nav.some((n) => n.id === id) ||
+      ["groups", "integration"].includes(id)
+    );
+  }
+  navActive(id: string) {
+    return (
+      this.page() === id ||
+      (id === "contacts" && this.page() === "groups") ||
+      (id === "applications" && this.page() === "integration")
+    );
   }
   query() {
     const p = new URLSearchParams();
@@ -360,7 +423,8 @@ export class AppComponent {
     if (this.filterStatus) p.set("status", this.filterStatus);
     if (this.period !== "all") {
       const from = new Date();
-      from.setHours(0, 0, 0, 0);
+      if (this.period === "24h") from.setTime(from.getTime() - 86400000);
+      else from.setHours(0, 0, 0, 0);
       if (this.period === "7d") from.setDate(from.getDate() - 6);
       if (this.period === "30d") from.setDate(from.getDate() - 29);
       p.set("from", from.toISOString());
@@ -389,6 +453,13 @@ export class AppComponent {
         const n = await this.api.get("admin/notifications?" + this.query());
         this.items.set(n.items);
         this.total.set(n.total);
+        const params = new URLSearchParams(this.query());
+        params.set("status", "NO_MATCH");
+        const unmatched = await this.api.get("admin/events?" + params);
+        this.noMatchEvents.set(unmatched.items || []);
+        this.noMatchTotal.set(unmatched.total || 0);
+      } else if (this.page() === "integration") {
+        // The resumable wizard owns its step and requests.
       } else if (this.page() === "manual") {
         this.restoreManual();
         if (
@@ -499,6 +570,18 @@ export class AppComponent {
         };
     if (Array.isArray(this.form.spec.variables))
       this.form.spec.variables = this.form.spec.variables.join(", ");
+    if (this.page() === "rules") {
+      this.form.spec.eventPriorities = this.form.spec.eventPriorities || {};
+      this.form.spec.eventTypes =
+        this.form.spec.eventTypes ||
+        (this.form.spec.eventType ? [this.form.spec.eventType] : []);
+      this.catalogApp = this.form.spec.applicationId || "";
+      void this.loadCatalog(this.catalogApp);
+    }
+    if (this.page() === "templates") {
+      this.catalogApp = "";
+      this.catalog.set([]);
+    }
     for (const key of ["whatsappOptInAt", "whatsappOptOutAt"])
       if (this.form.spec[key]) {
         const d = new Date(this.form.spec[key]);
@@ -545,11 +628,26 @@ export class AppComponent {
         if (Object.keys(credentials).length)
           body.spec.credentials = credentials;
       }
-      if (this.page() === "rules")
+      if (this.page() === "rules") {
+        if (!body.spec.eventTypes?.length)
+          throw new Error("Selecione pelo menos um evento.");
+        body.spec.eventType =
+          body.spec.eventTypes.find((t: string) => !t.endsWith("*")) ||
+          body.spec.eventType;
+        if (!body.spec.eventType)
+          throw new Error(
+            "Informe um tipo exato para manter a compatibilidade da regra com versões anteriores.",
+          );
+        body.spec.eventPriorities = Object.fromEntries(
+          Object.entries(body.spec.eventPriorities || {}).filter(
+            ([type, priority]) => !!priority && body.spec.eventTypes.some((pattern: string) => pattern.endsWith("*") ? type.startsWith(pattern.slice(0, -1)) : type === pattern),
+          ),
+        );
         body.spec.conditions = (body.spec.conditions || []).map((c: any) => ({
           ...c,
           value: this.conditionValue(c.value, c.operator),
         }));
+      }
       const payload = {
         code: body.code,
         name: body.name,
@@ -593,7 +691,9 @@ export class AppComponent {
   manualRequestId = crypto.randomUUID();
   get manualChannels() {
     return (this.resources()["channels"] || []).filter(
-      (c) => c.enabled && c.spec["credentialsConfigured"],
+      (c) =>
+        c.enabled &&
+        (c.spec["credentialsConfigured"] || c.spec["provider"] === "FAKE"),
     );
   }
   get manualChannel() {
@@ -745,7 +845,182 @@ export class AppComponent {
       } catch (e) {
         this.error.set(errorText(e));
       }
-    } else this.detail.set({ record: row });
+    } else if (this.page() === "events") await this.showEvent(row.id);
+    else this.detail.set({ record: row });
+  }
+  async showEvent(id: string) {
+    try {
+      this.detail.set(await this.api.get("admin/events/" + id));
+    } catch (e) {
+      this.error.set(errorText(e));
+    }
+  }
+  async openNotification(id: string) {
+    try {
+      this.detail.set(await this.api.get("admin/notifications/" + id));
+    } catch (e) {
+      this.error.set(errorText(e));
+    }
+  }
+  async reprocess() {
+    if (!this.detail()?.event || this.saving()) return;
+    this.saving.set(true);
+    try {
+      this.detail.set(
+        await this.api.post(
+          "admin/events/" + this.detail().event.id + "/reprocess",
+        ),
+      );
+      this.notify(
+        "Evento reprocessado com a configuração atual. Consulte o diagnóstico e a timeline.",
+      );
+      await this.reload();
+    } catch (e) {
+      this.error.set(errorText(e));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  async openResource(kind: string, id?: string) {
+    this.health.set(null);
+    this.testingRule.set(null);
+    this.navigate(kind);
+    await this.reload();
+    const resource = this.resources()[kind]?.find((r) => r.id === id);
+    if (resource || (!id && this.isAdmin())) this.openEditor(resource);
+  }
+  async loadCatalog(applicationId: string) {
+    this.catalogApp = applicationId;
+    this.catalog.set([]);
+    if (!applicationId) return;
+    try {
+      const rows = await this.api.get<any[]>(
+        "admin/applications/" + applicationId + "/event-catalog",
+      );
+      if (this.catalogApp === applicationId) this.catalog.set(rows);
+    } catch (e) {
+      this.error.set(errorText(e));
+    }
+  }
+  toggleEvent(type: string) {
+    const selected = new Set<string>(this.form.spec.eventTypes || []);
+    selected.has(type) ? selected.delete(type) : selected.add(type);
+    this.form.spec.eventTypes = [...selected];
+  }
+  addEvent() {
+    const type = this.customEventType.trim();
+    if (!validEventPattern(type) || this.form.spec.eventTypes.length >= 50) {
+      this.error.set(
+        "Use um tipo em MAIÚSCULAS ou prefixo como CRM_*. Máximo de 50 tipos.",
+      );
+      return;
+    }
+    if (!this.form.spec.eventTypes.includes(type))
+      this.form.spec.eventTypes.push(type);
+    this.customEventType = "";
+  }
+  get catalogFields(): string[] {
+    return [
+      ...new Set<string>(this.catalog().flatMap((r) => r.dataFields || [])),
+    ].map((field) => (field.includes(".") ? "data." + field : field));
+  }
+  get missingTemplateVariables(): string[] {
+    const variables = String(this.form.spec?.variables || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    return this.catalog().flatMap((event) =>
+      variables
+        .filter(
+          (v) => !(event.dataFields || []).includes(v.replace(/^data\./, "")),
+        )
+        .map((v) => event.eventType + ": " + v),
+    );
+  }
+  async resolveHealth(check: any) {
+    const app = this.health()?.application;
+    if (
+      check.code === "ACTIVE_API_KEY" ||
+      check.code === "NO_ACTIVE_API_KEY" ||
+      check.resourceKind === "keys"
+    ) {
+      this.health.set(null);
+      if (app && this.isAdmin()) await this.manageKeys(app);
+      else this.navigate("applications");
+    } else if (check.resourceKind === "events") {
+      this.health.set(null);
+      if (check.resourceId) await this.showEvent(check.resourceId);
+      else {
+        this.navigate("events");
+        this.filterApp = app?.id || "";
+        this.filterStatus = check.code === "NO_MATCH_24H" ? "NO_MATCH" : "";
+        this.period = check.code === "NO_MATCH_24H" ? "24h" : "all";
+        await this.reload();
+      }
+    } else await this.openResource(check.resourceKind, check.resourceId);
+  }
+  async showHealth(app: Resource) {
+    try {
+      this.health.set({
+        ...(await this.api.get("admin/applications/" + app.id + "/health")),
+        application: app,
+      });
+    } catch (e) {
+      this.error.set(errorText(e));
+    }
+  }
+  async startRuleTest(rule: Resource) {
+    this.testingRule.set(rule);
+    this.ruleTest.set(null);
+    this.testEventType =
+      (rule.spec["eventTypes"] || [rule.spec["eventType"]]).find(
+        (t: string) => !t.includes("*"),
+      ) || "";
+    this.testData = "";
+    this.testContactId = "";
+    await this.loadCatalog(rule.spec["applicationId"]);
+  }
+  async simulateRule() {
+    if (!this.testingRule() || this.saving()) return;
+    this.saving.set(true);
+    try {
+      const data = this.testData.trim() ? JSON.parse(this.testData) : undefined;
+      if (data && (typeof data !== "object" || Array.isArray(data)))
+        throw new Error("O exemplo deve ser um objeto JSON.");
+      this.ruleTest.set(
+        await this.api.post("admin/rules/" + this.testingRule()!.id + "/test", {
+          eventType: this.testEventType || undefined,
+          data,
+        }),
+      );
+    } catch (e) {
+      this.error.set(errorText(e));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+  async reviewRuleSend() {
+    if (!this.testContactId || !this.ruleTest()) return;
+    this.restoreManual();
+    if (this.manualPending) {
+      this.error.set(
+        "Existe um envio pendente de confirmação. Verifique-o em Enviar notificação antes de iniciar outro teste.",
+      );
+      return;
+    }
+    const test = this.ruleTest();
+    this.manualMode = "template";
+    this.manualForm = {
+      contactId: this.testContactId,
+      channelConnectionId: test.channelConnectionId,
+      templateId: test.templateId,
+      text: "",
+      variables: test.variables || {},
+    };
+    this.manualChanged();
+    this.testingRule.set(null);
+    this.navigate("manual");
+    await this.reviewManual();
   }
   async retry() {
     if (!this.detail()) return;

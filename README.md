@@ -36,6 +36,10 @@ O primeiro boot cria workspace Mibess, usuário ADMIN com a senha externa, aplic
 
 ## Configurar uma integração
 
+O assistente **Nova integração**, na Visão geral ou em **Configuração → Integrações**, guia aplicação, chave, destinatários, remetente, mensagem, eventos, teste e resumo. O progresso pode ser retomado no mesmo navegador; chaves e conteúdo das mensagens não são gravados nesse progresso. A chave é gerada uma vez por sistema, exibida uma única vez e configurada somente no servidor publicador.
+
+Uma regra pode cobrir até 50 tipos ou prefixos como `CRM_*`. O catálogo da aplicação sugere eventos e variáveis já recebidos. **Testar regra** simula sem envio; enviar de verdade exige escolher um contato, revisar e confirmar. A saúde da aplicação aponta cadastros que precisam de atenção.
+
 1. Entre no painel, abra Aplicações → ARTGIAN → Chaves de API. Copie a chave exibida uma única vez. Rotação revoga as anteriores; revogação individual também está disponível.
 2. Cadastre contatos, com telefone E.164 e evidência de consentimento. Adicione os contatos ao grupo ARTGIAN_OPERATIONS.
 3. Em Canais, configure MIBESS_NOTIFY com Meta Cloud API ou Evolution API temporária. Para Evolution, informe a instância e as credenciais, e configure EVOLUTION_API_URL no servidor; veja docs/EVOLUTION.md.
@@ -89,7 +93,7 @@ Documentação: [arquitetura](ARCHITECTURE.md), [infraestrutura](docs/INFRASTRUC
 |---|---|
 | 401 ao publicar | Chave completa correta, aplicação ativa e chave não revogada |
 | 403 no painel | Role e cookie CSRF; recarregue e faça login novamente |
-| Evento NO_MATCH | Regra ativa, tipo exato, condições e destinatários ativos |
+| Evento NO_MATCH | Abra Eventos → Por que não enviou?; corrija o cadastro indicado e use Reprocessar |
 | CANCELLED | Consentimento, suppression, contato/canal/template desativado |
 | MISSING_TEMPLATE_VARIABLE | Ordem/lista de variáveis do template e data do evento |
 | DELIVERY_UNKNOWN | Reconciliar no provider; não repetir cegamente |
@@ -102,3 +106,9 @@ Documentação: [arquitetura](ARCHITECTURE.md), [infraestrutura](docs/INFRASTRUC
 Abra **Enviar notificação** no menu (ou o botão em Contatos/Notificações). Escolha um contato ativo com consentimento, o remetente e escreva a mensagem. Clique **Revisar mensagem**, confira o telefone completo e confirme em **Confirmar e enviar**. Pela Evolution é possível escrever texto livre; pela Meta é obrigatório um template aprovado. O envio aparece em Notificações como **Envio manual**, com autor, mensagem, tentativas e timeline. Somente ADMIN e OPERATOR podem enviar.
 
 Não é preciso criar aplicação, regra ou chave de API. A confirmação gera uma única solicitação idempotente, processada pela fila existente. Se a conexão cair, use **Verificar envio** para recuperar o resultado sem duplicar a mensagem.
+
+## Artgian CRM
+
+O CRM usa a aplicação `ARTGIAN_CRM`, independente de `ARTGIAN`/Studio e seu `ORDER_PAID`. Os avisos são `CRM_ORDER_IMPORTED`, `CRM_ORDER_PAID`, `CRM_ORDER_PAYMENT_ISSUE`, `CRM_ORDER_FULFILLMENT_UPDATED`, `CRM_ORDER_COSTS_OUTDATED`, `CRM_SYNC_FAILED`, `CRM_SYNC_RECOVERED` e `CRM_NOTIFY_TEST`.
+
+Template comum `crm_aviso`: `*{{title}}*` seguido de `{{message}}` e `{{url}}`, cada um em uma linha, com as variáveis `title,message,url`. Use somente esses campos garantidos; cliente/rastreio e demais campos opcionais podem ser null. No Evolution a aprovação é local; no Meta é necessária aprovação real do template no provider. Configure o grupo exclusivo `ARTGIAN_CRM_OPERATIONS`, com consentimentos válidos, prioridade NORMAL e exceção HIGH para `CRM_SYNC_FAILED`. O botão **Enviar teste** fica em Integrações no CRM; aceitação do evento não equivale a entrega no WhatsApp.

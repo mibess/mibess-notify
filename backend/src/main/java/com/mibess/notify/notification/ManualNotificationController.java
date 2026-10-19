@@ -87,6 +87,32 @@ public class ManualNotificationController {
     this.audit = audit;
   }
 
+  @GetMapping("/requests/{requestId}")
+  public Accepted request(@PathVariable UUID requestId) {
+    var row = db
+      .sql(
+        "SELECT id,status FROM notifications WHERE workspace_id=:w AND manual_request_id=:request AND created_by=:actor"
+      )
+      .param("w", access.id())
+      .param("request", requestId)
+      .param("actor", access.actor())
+      .query()
+      .listOfRows()
+      .stream()
+      .findFirst()
+      .orElseThrow(() ->
+        new ResponseStatusException(
+          HttpStatus.NOT_FOUND,
+          "Envio não encontrado"
+        )
+      );
+    return new Accepted(
+      (UUID) row.get("id"),
+      row.get("status").toString(),
+      true
+    );
+  }
+
   @PostMapping("/preview")
   public Preview preview(@Valid @RequestBody Input input) {
     return prepare(access.id(), input).preview();

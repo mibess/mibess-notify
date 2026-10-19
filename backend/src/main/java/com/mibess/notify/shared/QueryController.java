@@ -122,6 +122,10 @@ public class QueryController {
       "payload",
       json.read(result.get("payload").toString())
     );
+    if (result.containsKey("routing_diagnostics")) result.put(
+      "routing_diagnostics",
+      json.read(result.get("routing_diagnostics").toString())
+    );
     return result;
   }
 
@@ -268,6 +272,20 @@ public class QueryController {
       where += " AND application_id=:app";
       p.put("app", applicationId);
     }
+    long noMatch = db
+      .sql("SELECT count(*) FROM events" + where + " AND status='NO_MATCH'")
+      .params(p)
+      .query(Long.class)
+      .single();
+    var noMatchEvents = db
+      .sql(
+        "SELECT id,application_id,type,error_code,created_at FROM events" +
+          where +
+          " AND status='NO_MATCH' ORDER BY created_at DESC,id DESC LIMIT 5"
+      )
+      .params(p)
+      .query()
+      .listOfRows();
     long events = db
       .sql("SELECT count(*) FROM events" + where)
       .params(p)
@@ -288,6 +306,8 @@ public class QueryController {
       .listOfRows();
     var result = new LinkedHashMap<String, Object>();
     result.put("events", events);
+    result.put("NO_MATCH", noMatch);
+    result.put("noMatchEvents", noMatchEvents);
     long total = 0,
       delivered = 0,
       accepted = 0;

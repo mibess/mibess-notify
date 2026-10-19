@@ -61,8 +61,32 @@ try:
         group=create('groups','ARTGIAN_OPERATIONS_'+suffix,'Operações · teste',{'members':[contact['id']]});cleanup.append(('groups',group))
         channel=create('channels','MIBESS_TEST_'+suffix,'Mibess Notify · fake',{'provider':'FAKE'});cleanup.append(('channels',channel))
         template=create('templates','internal_order_'+suffix,'Nova venda · teste',{'channelConnectionId':channel['id'],'providerTemplateName':'internal_new_order','language':'pt_BR','category':'UTILITY','status':'APPROVED','body':'Pedido {{orderNumber}} de {{customerName}}','variables':['orderNumber','customerName']});cleanup.append(('templates',template))
-        rule=create('rules','ORDER_PAID_'+suffix,'Artgian ORDER_PAID · teste',{'applicationId':app['id'],'eventType':'ORDER_PAID','targetType':'CONTACT_GROUP','targetId':group['id'],'channelConnectionId':channel['id'],'templateId':template['id'],'priority':'HIGH','conditions':[]});cleanup.append(('rules',rule))
         payload={'type':'ORDER_PAID','correlationId':'order-1842-'+suffix,'data':{'orderNumber':'1842','customerName':'Mariana','amount':189.90}}
+        unmatched=publish('before-rule',payload)
+        eventually(lambda:event_state(unmatched['eventId']),'NO_MATCH')
+        detail=call('/api/v1/admin/events/'+unmatched['eventId'])
+        assert detail['event']['error_code']=='NO_RULE_FOR_EVENT_TYPE'
+        assert detail['event']['routing_diagnostics']['reason']=='NO_RULE_FOR_EVENT_TYPE'
+        catalog=call('/api/v1/admin/applications/'+app['id']+'/event-catalog')
+        assert any(e['eventType']=='ORDER_PAID' and 'orderNumber' in e['dataFields'] for e in catalog)
+        rule=create('rules','ORDER_PAID_'+suffix,'Artgian ORDER_PAID · teste',{'applicationId':app['id'],'eventType':'ORDER_PAID','eventTypes':['ORDER_PAID','CRM_*'],'targetType':'CONTACT_GROUP','targetId':group['id'],'channelConnectionId':channel['id'],'templateId':template['id'],'priority':'NORMAL','eventPriorities':{'CRM_SYNC_FAILED':'HIGH'},'conditions':[]});cleanup.append(('rules',rule))
+        before=call('/api/v1/admin/notifications?applicationId='+app['id'])['total']
+        simulation=call('/api/v1/admin/rules/'+rule['id']+'/test','POST',{})
+        assert simulation['matched'] and not simulation['problems'] and len(simulation['recipients'])==1
+        assert simulation['renderedMessage']=='Pedido 1842 de Mariana'
+        assert call('/api/v1/admin/notifications?applicationId='+app['id'])['total']==before
+        rerouted=call('/api/v1/admin/events/'+unmatched['eventId']+'/reprocess','POST',{})
+        assert rerouted['event']['status']=='PROCESSED' and len(rerouted['notifications'])==1
+        assert any(t['status']=='REPROCESS_REQUESTED' for t in rerouted['timeline'])
+        assert any(a['action']=='EVENT_REPROCESSED' and a['resource_id']==unmatched['eventId'] for a in call('/api/v1/admin/audit')['items'])
+        try:
+            call('/api/v1/admin/events/'+unmatched['eventId']+'/reprocess','POST',{})
+            raise AssertionError('Processed event must reject reprocessing')
+        except RuntimeError as error:
+            assert 'HTTP 409:' in str(error)
+        assert len(call('/api/v1/admin/events/'+unmatched['eventId'])['notifications'])==1
+        checks=call('/api/v1/admin/applications/'+app['id']+'/health')['checks']
+        assert any(c['code']=='CHANNEL_CONNECTION' and c['status']=='OK' for c in checks)
         accepted=publish('paid',payload);duplicate=publish('paid',payload)
         assert accepted['eventId']==duplicate['eventId'] and duplicate['duplicate']
         def notification(event_id):return next((n for n in call('/api/v1/admin/notifications?applicationId='+app['id'])['items'] if n['event_id']==event_id),{})
@@ -70,17 +94,32 @@ try:
         n=notification(accepted['eventId']);call('/api/v1/admin/notifications/'+n['id']+'/simulate-delivery','POST',{})
         eventually(lambda:notification(accepted['eventId']).get('status'),'DELIVERED')
         detail=call('/api/v1/admin/notifications/'+n['id']);assert len(detail['attempts'])==1 and len(detail['timeline'])>=7
+        recovered=notification(unmatched['eventId'])
+        eventually(lambda:notification(unmatched['eventId']).get('status'),'SENT')
+        call('/api/v1/admin/notifications/'+recovered['id']+'/simulate-delivery','POST',{})
+        eventually(lambda:notification(unmatched['eventId']).get('status'),'DELIVERED')
+        wildcard=publish('wildcard',{'type':'CRM_SYNC_FAILED','data':payload['data']})
+        eventually(lambda:notification(wildcard['eventId']).get('status'),'SENT')
+        assert notification(wildcard['eventId'])['priority']=='HIGH'
         tracking=create('rules','TRACKING_'+suffix,'Artgian entrega · teste',{'applicationId':app['id'],'eventType':'TRACKING_STATUS_CHANGED','targetType':'EVENT_RECIPIENT','channelConnectionId':channel['id'],'templateId':template['id'],'priority':'NORMAL','conditions':[{'field':'data.status','operator':'EQUALS','value':'OUT_FOR_DELIVERY'}]});cleanup.append(('rules',tracking))
         recipient={'name':'Mariana · teste','phone':phone,'whatsappOptIn':True,'whatsappOptInAt':now,'whatsappOptInSource':'Teste fake'}
         payload={'type':'TRACKING_STATUS_CHANGED','recipient':recipient,'data':{'status':'OUT_FOR_DELIVERY','orderNumber':'1842','customerName':'Mariana'}}
         tracked=publish('tracking',payload);eventually(lambda:notification(tracked['eventId']).get('status'),'SENT')
         call('/api/v1/admin/suppressions','POST',{'address':phone,'reason':'Opt-out do teste de aceite'})
         blocked=publish('suppressed',payload);eventually(lambda:notification(blocked['eventId']).get('status'),'CANCELLED')
+        print('PASS: NO_MATCH reason → catalog → simulation without delivery → audited reprocess → one fake DELIVERED; multiple event types/prefix and priority; integration health.')
         print('PASS: ORDER_PAID → group → fake SENT → async DELIVERED; idempotency; timeline; OUT_FOR_DELIVERY → EVENT_RECIPIENT; suppression.')
         print('Delivered notification ID:',n['id'])
 finally:
-    call('/api/v1/admin/applications/'+app['id']+'/keys/'+key['id'],'DELETE')
-    for kind,resource in reversed(cleanup):disable(kind,resource)
-    disable('applications',app)
-    call('/api/v1/auth/logout','POST',{})
+    cleanup_failures=[]
+    try:call('/api/v1/admin/applications/'+app['id']+'/keys/'+key['id'],'DELETE')
+    except Exception:cleanup_failures.append('test API key')
+    for kind,resource in reversed(cleanup):
+        try:disable(kind,resource)
+        except Exception:cleanup_failures.append(kind+':'+resource['id'])
+    try:disable('applications',app)
+    except Exception:cleanup_failures.append('applications:'+app['id'])
+    try:call('/api/v1/auth/logout','POST',{})
+    except Exception:cleanup_failures.append('test session logout')
+    if cleanup_failures:raise RuntimeError('Cleanup incomplete; disable these test resources: '+', '.join(cleanup_failures))
     print('Test API key revoked and test configuration disabled; event/attempt/audit history preserved.')

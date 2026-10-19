@@ -129,6 +129,61 @@ class EvolutionTest {
   }
 
   @Test
+  void healthReadsConnectionStateWithoutSendingAndDoesNotClaimDeliveryReadiness()
+    throws Exception {
+    var state = new AtomicReference<>("{\"instance\":{\"state\":\"close\"}}");
+    var status = new java.util.concurrent.atomic.AtomicInteger(200);
+    var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/instance/connectionState/TEST", exchange -> {
+      assertThat(exchange.getRequestMethod()).isEqualTo("GET");
+      var bytes = state.get().getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(status.get(), bytes.length);
+      exchange.getResponseBody().write(bytes);
+      exchange.close();
+    });
+    server.start();
+    try {
+      UUID id = UUID.randomUUID(),
+        workspace = UUID.randomUUID();
+      var spec = json
+        .object()
+        .put("instanceName", "TEST")
+        .put(
+          "encryptedCredentials",
+          crypto.encrypt(
+            "{\"apiKey\":\"test-key\",\"webhookToken\":\"test-token\"}",
+            workspace + ":" + id
+          )
+        );
+      var channel = new Resource(
+        id,
+        workspace,
+        "TEST",
+        "Teste",
+        true,
+        spec,
+        "",
+        ""
+      );
+      var provider = new WhatsAppEvolutionProvider(
+        json,
+        crypto,
+        "http://127.0.0.1:" + server.getAddress().getPort()
+      );
+      assertThat(provider.healthCheck(channel)).isEqualTo("DISCONNECTED");
+      state.set("{\"instance\":{\"state\":\"open\"}}");
+      assertThat(provider.healthCheck(channel)).isEqualTo("OPEN_UNVERIFIED");
+      status.set(503);
+      assertThat(provider.healthCheck(channel)).isEqualTo("UNKNOWN");
+      status.set(200);
+      state.set("not-json");
+      assertThat(provider.healthCheck(channel)).isEqualTo("UNKNOWN");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
   void normalizesOnlyDeliveryStatusesAndOptOutWithoutSecretsOrChatHistory() {
     var status = json.read(
       "{\"event\":\"messages.update\",\"apikey\":\"never-store\",\"data\":{\"keyId\":\"wa-1\",\"fromMe\":true,\"status\":\"DELIVERY_ACK\"}}"

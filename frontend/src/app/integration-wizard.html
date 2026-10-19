@@ -1,0 +1,483 @@
+<section
+  class="panel integration-wizard"
+  aria-label="Assistente de nova integração"
+>
+  <div class="wizard-top">
+    <p>Passo {{draft.step+1}} de 8 · {{steps[draft.step]}}</p>
+    <button class="text-button" (click)="exit.emit('applications')">
+      Salvar e sair
+    </button>
+  </div>
+  <progress
+    [value]="draft.step+1"
+    max="8"
+    aria-label="Progresso da integração"
+  ></progress>
+  <ol class="wizard-steps">
+    @for(step of steps;track step;let i=$index){
+    <li
+      [class.current]="i===draft.step"
+      [class.complete]="i<draft.step"
+      [attr.aria-current]="i===draft.step?'step':null"
+    >
+      <span>{{i+1}}</span>{{step}}
+    </li>
+    }
+  </ol>
+  @if(resumed()){
+  <p class="manual-notice">
+    Configuração retomada neste navegador. Chaves e mensagens não são guardadas
+    no progresso.
+  </p>
+  } @if(error()){
+  <p class="error" role="alert">{{error()}}</p>
+  }
+  <h2 id="wizard-heading" tabindex="-1">{{steps[draft.step]}}</h2>
+  <fieldset class="wizard-fields" [disabled]="busy()">
+    @switch(draft.step){ @case(0){
+    <p>
+      Escolha o sistema que publicará os eventos. Cada sistema precisa de apenas
+      uma integração.
+    </p>
+    <label
+      >Aplicação<select
+        [(ngModel)]="draft.applicationId"
+        (ngModelChange)="applicationChanged()"
+      >
+        <option value="">Selecione uma aplicação</option>
+        @for(app of resources()['applications']||[];track app.id){
+        <option [value]="app.id" [disabled]="!app.enabled">
+          {{app.name}}{{app.enabled?'':' (inativa)'}}
+        </option>
+        }
+      </select></label
+    >
+    <details>
+      <summary>Criar uma aplicação</summary>
+      <div class="form-grid">
+        <label
+          >Nome<input [(ngModel)]="applicationName" maxlength="150" /></label
+        ><label
+          >Código<input
+            [(ngModel)]="applicationCode"
+            placeholder="ARTGIAN_CRM"
+            maxlength="80"
+        /></label>
+      </div>
+      <button class="btn" (click)="createApplication()">Criar aplicação</button>
+    </details>
+    } @case(1){
+    <p>
+      Faça isso <strong>uma vez por sistema</strong>, no ambiente do servidor
+      que publica os eventos. Nunca coloque a chave no código do navegador.
+    </p>
+    <p>
+      {{activeKeys.length}} chave(s) ativa(s). Se já configurou uma chave neste
+      sistema, pode continuar.
+    </p>
+    @if(secret()){
+    <div class="secret-box">
+      <strong>Guarde agora: esta chave é exibida uma única vez.</strong
+      ><code>{{secret()}}</code
+      ><button class="btn small" (click)="copySecret()">
+        {{copied()?'Copiada':'Copiar chave'}}
+      </button>
+    </div>
+    <label class="checkbox-label"
+      ><input type="checkbox" [(ngModel)]="savedKey" />Guardei a chave no
+      ambiente seguro do meu sistema.</label
+    >
+    }
+    <pre class="message-preview">{{configSnippet}}</pre>
+    <button class="btn" (click)="createKey()" [disabled]="!!secret()">
+      Gerar nova chave
+    </button>
+    } @case(2){
+    <p>
+      Selecione um grupo existente ou crie um grupo para esta integração. O
+      consentimento deve ter autorização e evidência reais.
+    </p>
+    <label
+      >Grupo de destinatários<select
+        [(ngModel)]="draft.groupId"
+        (ngModelChange)="persist()"
+      >
+        <option value="">Selecione um grupo</option>
+        @for(group of resources()['groups']||[];track group.id){
+        <option [value]="group.id" [disabled]="!group.enabled">
+          {{group.name}} · {{group.spec.members?.length||0}} membro(s)
+        </option>
+        }
+      </select></label
+    >
+    <details>
+      <summary>Criar grupo e escolher contatos</summary>
+      <div class="member-list">
+        @for(contact of resources()['contacts']||[];track
+        contact.id){@if(contact.enabled){<label class="checkbox-label"
+          ><input
+            type="checkbox"
+            [checked]="draft.contactIds.includes(contact.id)"
+            (change)="toggleContact(contact.id)"
+          />{{contact.name}} · {{contact.spec.phone}}</label
+        >}}@empty{
+        <p>Crie um contato abaixo para começar.</p>
+        }
+      </div>
+      <div class="form-grid">
+        <label>Nome do grupo<input [(ngModel)]="groupName" /></label
+        ><label
+          >Código do grupo<input
+            [(ngModel)]="groupCode"
+            placeholder="ARTGIAN_CRM_OPERATIONS"
+        /></label>
+      </div>
+      <button class="btn" (click)="createGroup()">
+        Criar grupo com estes contatos
+      </button>
+    </details>
+    <details>
+      <summary>Criar contato com consentimento</summary>
+      <div class="form-grid">
+        <label>Nome<input [(ngModel)]="contactName" /></label
+        ><label>Código<input [(ngModel)]="contactCode" /></label>
+      </div>
+      <label
+        >Telefone E.164<input
+          type="tel"
+          [(ngModel)]="contactPhone"
+          placeholder="+5516999999999"
+      /></label>
+      <label class="checkbox-label"
+        ><input type="checkbox" [(ngModel)]="consent" />O contato autorizou
+        receber estas mensagens.</label
+      >
+      <label
+        >Origem da evidência<input
+          [(ngModel)]="consentSource"
+          placeholder="Autorização registrada, formulário ou contrato"
+      /></label>
+      <label
+        >Data e hora do consentimento<input
+          type="datetime-local"
+          [(ngModel)]="consentAt"
+      /></label>
+      <button class="btn" (click)="createContact()">
+        Cadastrar contato autorizado
+      </button>
+    </details>
+    } @case(3){
+    <p>Escolha o remetente WhatsApp que enviará as mensagens.</p>
+    <label
+      >Canal<select
+        [(ngModel)]="draft.channelId"
+        (ngModelChange)="draft.templateId='';persist()"
+      >
+        <option value="">Selecione um canal</option>
+        @for(channel of resources()['channels']||[];track channel.id){
+        <option
+          [value]="channel.id"
+          [disabled]="!channel.enabled||(!channel.spec.credentialsConfigured&&channel.spec.provider!=='FAKE')"
+        >
+          {{channel.name}} ·
+          {{channel.spec.provider}}{{!channel.enabled||(!channel.spec.credentialsConfigured&&channel.spec.provider!=='FAKE')?'
+          (configuração pendente)':''}}
+        </option>
+        }
+      </select></label
+    >
+    @if(!resources()['channels']?.length){
+    <p class="manual-notice">
+      Crie um canal e configure as credenciais para continuar. O progresso fica
+      salvo.
+    </p>
+    }
+    <button class="btn" (click)="exit.emit('channels')">
+      Configurar canais
+    </button>
+    } @case(4){
+    <label
+      >Template<select
+        [(ngModel)]="draft.templateId"
+        (ngModelChange)="persist()"
+      >
+        <option value="">Selecione uma mensagem</option>
+        @for(template of templates;track template.id){
+        <option [value]="template.id">
+          {{template.name}} · {{template.spec.status}}
+        </option>
+        }
+      </select></label
+    >
+    <details>
+      <summary>Criar template</summary>
+      <div class="form-grid">
+        <label>Nome<input [(ngModel)]="templateName" /></label
+        ><label
+          >Nome de referência / código<input
+            [(ngModel)]="templateCode"
+            placeholder="crm_aviso"
+        /></label>
+      </div>
+      <label
+        >Corpo da mensagem<textarea
+          [(ngModel)]="templateBody"
+          rows="5"
+        ></textarea>
+      </label>
+      <label
+        >Variáveis, separadas por vírgula<input
+          [(ngModel)]="templateVariables"
+          list="wizard-variable-fields"
+      /></label>
+      <datalist id="wizard-variable-fields">
+        @for(field of fields;track field){
+        <option [value]="field"></option>
+        }
+      </datalist>
+      <p>Idioma: pt_BR · Categoria: UTILITY.</p>
+      <label class="checkbox-label"
+        ><input
+          type="checkbox"
+          [(ngModel)]="templateApproved"
+        />{{channel?.spec?.['provider']==='WHATSAPP_META'?'Este nome, idioma e
+        conteúdo já estão aprovados na Meta.':'Revisei o conteúdo e autorizo a
+        aprovação local na Evolution.'}}</label
+      >
+      <button class="btn" (click)="createTemplate()">
+        Criar template aprovado
+      </button>
+    </details>
+    <label
+      >Exemplo recebido<select
+        aria-label="Evento de exemplo"
+        (change)="selectSample($any($event.target).value)"
+      >
+        <option value="">Usar dados informados abaixo</option>
+        @for(event of catalog();track event.eventType){
+        <option [value]="event.eventType">{{event.eventType}}</option>
+        }
+      </select></label
+    >
+    <label
+      >Dados de exemplo (JSON)<textarea
+        [(ngModel)]="sample"
+        rows="5"
+      ></textarea>
+    </label>
+    <h3>Prévia da mensagem</h3>
+    <pre class="message-preview">{{renderedPreview}}</pre>
+    @if(fields.length){
+    <p class="subtle">Variáveis recebidas: {{fields.join(', ')}}</p>
+    } @if(variableWarnings.length){
+    <p class="manual-notice">
+      Campos não recebidos em alguns eventos: {{variableWarnings.join('; ')}}.
+      Valores nulos também impedem o envio.
+    </p>
+    } } @case(5){
+    <p>
+      Uma regra encaminhará estes eventos ao grupo e à mensagem escolhidos. Até
+      50 tipos, incluindo prefixos como CRM_*.
+    </p>
+    @for(event of catalog();track event.eventType){<label class="checkbox-label"
+      ><input
+        type="checkbox"
+        [checked]="draft.eventTypes.includes(event.eventType)"
+        (change)="toggleEvent(event.eventType)"
+      />{{event.eventType}}<small
+        >Último: {{event.lastReceivedAt|date:'dd/MM HH:mm'}}</small
+      ></label
+    >} @if(!catalog().length){
+    <p class="manual-notice">
+      A aplicação ainda não enviou eventos. Digite os tipos previstos no
+      contrato do sistema.
+    </p>
+    }
+    <label
+      >Tipo ou prefixo<input
+        [(ngModel)]="eventInput"
+        placeholder="CRM_NOTIFY_TEST ou CRM_*" /></label
+    ><button class="btn small" (click)="addEvent()">Adicionar evento</button>
+    <div class="selected-events">
+      @for(type of draft.eventTypes;track type){<button
+        class="btn small"
+        (click)="toggleEvent(type)"
+        [attr.aria-label]="'Remover '+type"
+      >
+        {{type}} ×</button
+      >}
+    </div>
+    <label
+      >Tipo exato para compatibilidade (se usar só prefixos)<input
+        [(ngModel)]="fallbackType"
+        placeholder="CRM_NOTIFY_TEST"
+    /></label>
+    <label
+      >Prioridade padrão<select [(ngModel)]="priority">
+        <option>LOW</option>
+        <option>NORMAL</option>
+        <option>HIGH</option>
+        <option>CRITICAL</option>
+      </select></label
+    >
+    @for(type of draft.eventTypes;track type){@if(!type.includes('*')){<label
+      >Prioridade de {{type}}<select
+        [ngModel]="eventPriority(type)"
+        (ngModelChange)="setEventPriority(type,$event)"
+      >
+        <option value="">Usar prioridade padrão</option>
+        <option>LOW</option>
+        <option>NORMAL</option>
+        <option>HIGH</option>
+        <option>CRITICAL</option>
+      </select></label
+    >}}
+    <p class="subtle">
+      Continuar cria ou atualiza somente a regra desta integração, sem
+      condições.
+    </p>
+    } @case(6){
+    <p>
+      Primeiro simule. O envio real exige escolher <strong>um contato</strong>,
+      revisar o telefone e confirmar.
+    </p>
+    @if(!draft.attempted){
+    <label
+      >Dados de exemplo (JSON)<textarea
+        [(ngModel)]="sample"
+        rows="5"
+      ></textarea>
+    </label>
+    <button class="btn" (click)="simulate()">Simular regra</button>
+    @if(simulation()){ @for(problem of simulation().problems||[];track $index){
+    <p class="manual-notice">{{problem.message}}</p>
+    }
+    <p>
+      {{simulation().recipients?.length||0}} destinatário(s) resolvido(s). O
+      teste abaixo será enviado somente ao contato escolhido.
+    </p>
+    <pre class="message-preview">{{simulation().renderedMessage}}</pre>
+    <label
+      >Contato para este teste<select
+        [(ngModel)]="draft.testContactId"
+        (ngModelChange)="preview.set(null);persist()"
+      >
+        <option value="">Selecione um contato</option>
+        @for(contact of resources()['contacts']||[];track
+        contact.id){@if(contact.enabled){
+        <option [value]="contact.id">
+          {{contact.name}} · {{contact.spec.phone}}
+        </option>
+        }}
+      </select></label
+    >
+    <button
+      class="btn"
+      [disabled]="!draft.testContactId"
+      (click)="reviewTest()"
+    >
+      Revisar envio real
+    </button>
+    }} @if(preview()){
+    <div class="manual-notice">
+      <strong
+        >Confirmar envio para {{preview().recipientName}} ·
+        {{preview().recipientAddress}}</strong
+      >
+      <p>Remetente: {{preview().channelName}}</p>
+      <pre class="message-preview">{{preview().text}}</pre>
+      <button class="btn primary" (click)="confirmTest()">
+        {{draft.attempted?'Verificar o mesmo envio':'Confirmar e enviar este
+        teste'}}
+      </button>
+    </div>
+    } @if(draft.attempted&&!draft.notificationId&&!preview()){
+    <p class="manual-notice">
+      A confirmação deste teste está pendente. Recupere o resultado antes de
+      iniciar outro envio.
+    </p>
+    <button class="btn" (click)="recoverSend()">Verificar envio</button>}
+    @if(delivery()){
+    <div aria-live="polite">
+      <h3>Status: {{delivery().notification.status}}</h3>
+      <p>
+        Atualização automática até a confirmação de entrega. SENT significa
+        aceitação pelo remetente; DELIVERED confirma entrega.
+      </p>
+      @if(delivery().notification.error_code){
+      <p class="error">{{deliveryError(delivery().notification.error_code)}}</p>
+      <button class="text-button" (click)="exit.emit('notifications')">
+        Ver diagnóstico completo em Notificações</button
+      >}
+      <ol class="timeline">
+        @for(item of delivery().timeline||[];track item.id){
+        <li>
+          <div>
+            <strong>{{item.status}}</strong>
+            <p>{{item.description}}</p>
+            <time>{{item.created_at|date:'dd/MM HH:mm:ss'}}</time>
+          </div>
+        </li>
+        }
+      </ol>
+    </div>
+    <button class="btn" (click)="refreshDelivery()">Atualizar entrega</button>
+    } } @case(7){
+    <p>
+      A integração está configurada. Mantenha a chave no servidor do sistema e
+      publique eventos com os tipos selecionados.
+    </p>
+    <dl class="manual-summary">
+      <div>
+        <dt>Aplicação</dt>
+        <dd>{{name('applications',draft.applicationId)}}</dd>
+      </div>
+      <div>
+        <dt>Grupo</dt>
+        <dd>{{name('groups',draft.groupId)}}</dd>
+      </div>
+      <div>
+        <dt>Remetente</dt>
+        <dd>{{name('channels',draft.channelId)}}</dd>
+      </div>
+      <div>
+        <dt>Template</dt>
+        <dd>{{name('templates',draft.templateId)}}</dd>
+      </div>
+      <div>
+        <dt>Regra</dt>
+        <dd>{{name('rules',draft.ruleId)}}</dd>
+      </div>
+      <div>
+        <dt>Eventos</dt>
+        <dd>{{draft.eventTypes.join(', ')}}</dd>
+      </div>
+      <div>
+        <dt>Teste</dt>
+        <dd>
+          {{delivery()?.notification?.status||'Consulte Notificações'}} ·
+          {{draft.notificationId}}
+        </dd>
+      </div>
+    </dl>
+    <p>
+      Próximo passo: publique um evento real do seu sistema e acompanhe Eventos
+      → diagnóstico e Notificações → timeline. A saúde da aplicação indica o que
+      precisa de atenção.
+    </p>
+    } }
+  </fieldset>
+  <div class="wizard-footer">
+    <button class="btn" [disabled]="draft.step===0||busy()" (click)="back()">
+      Voltar</button
+    >@if(draft.step<7){<button
+      class="btn primary"
+      [disabled]="busy()"
+      (click)="next()"
+    >
+      {{busy()?'Salvando…':'Continuar'}}</button
+    >}@else{<button class="btn primary" (click)="finish()">
+      Concluir integração</button
+    >}
+  </div>
+</section>

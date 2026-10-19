@@ -1011,5 +1011,593 @@ class IntegrationTest {
   }
 
   @Autowired
+  com.mibess.notify.routing.RoutingEngine routingEngine;
+
+  private UUID localEvent(String type, String data) {
+    var payload = json.object().put("type", type);
+    payload.set("data", json.read(data));
+    return eventService
+      .accept(
+        new ApiKeyService.Application(app, Bootstrap.WORKSPACE),
+        UUID.randomUUID().toString(),
+        payload
+      )
+      .eventId();
+  }
+
+  private Resource currentRule() {
+    return store.rulesForApplication(Bootstrap.WORKSPACE, app).getFirst();
+  }
+
+  private void diagnose(
+    UUID eventId,
+    String expectedStatus,
+    String expectedCode
+  ) {
+    routingEngine.route(eventId.toString());
+    var row = db
+      .sql(
+        "SELECT status,error_code,routing_diagnostics::text AS diagnostic FROM events WHERE id=:id"
+      )
+      .param("id", eventId)
+      .query()
+      .singleRow();
+    assertThat(row.get("status")).isEqualTo(expectedStatus);
+    assertThat(row.get("error_code")).isEqualTo(expectedCode);
+    assertThat(
+      json.read(row.get("diagnostic").toString()).path("reason").asText()
+    ).isEqualTo(expectedCode);
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void routingExplainsEveryNoMatchReasonAndKeepsMostSpecificFailure()
+    throws Exception {
+    UUID noRule = localEvent("CRM_SYNC_RECOVERED", "{}");
+    diagnose(noRule, "NO_MATCH", "NO_RULE_FOR_EVENT_TYPE");
+    var rule = currentRule();
+    db.sql("UPDATE routing_rules SET enabled=false WHERE id=:id")
+      .param("id", rule.id())
+      .update();
+    diagnose(localEvent("ORDER_PAID", "{}"), "NO_MATCH", "RULE_DISABLED");
+    var spec = (com.fasterxml.jackson.databind.node.ObjectNode) rule
+      .spec()
+      .deepCopy();
+    spec.set(
+      "conditions",
+      json.tree(
+        List.of(
+          Map.of(
+            "field",
+            "data.paymentStatus",
+            "operator",
+            "EQUALS",
+            "value",
+            "PAID"
+          )
+        )
+      )
+    );
+    store.save(
+      Kind.RULES,
+      Bootstrap.WORKSPACE,
+      rule.id(),
+      rule.code(),
+      rule.name(),
+      true,
+      spec
+    );
+    diagnose(localEvent("ORDER_PAID", "{}"), "NO_MATCH", "CONDITIONS_NOT_MET");
+    db.sql("UPDATE contact_groups SET enabled=false WHERE id=:id")
+      .param("id", group)
+      .update();
+    UUID noRecipients = localEvent(
+      "ORDER_PAID",
+      "{\"paymentStatus\":\"PAID\"}"
+    );
+    diagnose(noRecipients, "NO_MATCH", "NO_ACTIVE_RECIPIENTS");
+    // A second disabled rule must not hide a deeper recipient failure.
+    rule("ORDER_PAID", "CONTACT_GROUP", group, List.of());
+    db.sql(
+      "UPDATE routing_rules SET enabled=false WHERE id<>:id AND spec->>'applicationId'=:a"
+    )
+      .param("id", rule.id())
+      .param("a", app.toString())
+      .update();
+    diagnose(
+      localEvent("ORDER_PAID", "{\"paymentStatus\":\"PAID\"}"),
+      "NO_MATCH",
+      "NO_ACTIVE_RECIPIENTS"
+    );
+    db.sql("UPDATE contact_groups SET enabled=true WHERE id=:id")
+      .param("id", group)
+      .update();
+    db.sql("UPDATE contacts SET enabled=false WHERE id=:id")
+      .param("id", contact)
+      .update();
+    diagnose(
+      localEvent("ORDER_PAID", "{\"paymentStatus\":\"PAID\"}"),
+      "NO_MATCH",
+      "NO_ACTIVE_RECIPIENTS"
+    );
+    db.sql("UPDATE applications SET enabled=false WHERE id=:id")
+      .param("id", app)
+      .update();
+    diagnose(localEvent("ORDER_PAID", "{}"), "SKIPPED", "APPLICATION_DISABLED");
+    mvc
+      .perform(
+        get("/api/v1/admin/events/" + noRecipients).with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(
+        jsonPath("$.event.routing_diagnostics.rules[0].ruleId").value(
+          rule.id().toString()
+        )
+      )
+      .andExpect(
+        jsonPath("$.event.routing_diagnostics.rules[0].targetId").value(
+          group.toString()
+        )
+      )
+      .andExpect(jsonPath("$.timeline[0].status").value("NO_MATCH"))
+      .andExpect(jsonPath("$.event.idempotency_key").doesNotExist());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void reprocessUsesCurrentConfigurationIsAuditedAndNeverDuplicatesNotifications()
+    throws Exception {
+    UUID id = localEvent(
+      "CRM_SYNC_RECOVERED",
+      "{\"orderNumber\":\"reprocessed\"}"
+    );
+    diagnose(id, "NO_MATCH", "NO_RULE_FOR_EVENT_TYPE");
+    rule("CRM_SYNC_RECOVERED", "CONTACT_GROUP", group, List.of());
+    mvc
+      .perform(
+        post("/api/v1/admin/events/" + id + "/reprocess")
+          .with(user("admin@mibess.com.br").roles("OPERATOR"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.event.status").value("PROCESSED"))
+      .andExpect(jsonPath("$.timeline[1].status").value("REPROCESS_REQUESTED"))
+      .andExpect(jsonPath("$.notifications.length()").value(1));
+    mvc
+      .perform(
+        post("/api/v1/admin/events/" + id + "/reprocess")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isConflict());
+    // Even a previously partially processed event cannot insert the same recipient twice.
+    db.sql("UPDATE events SET status='NO_MATCH' WHERE id=:id")
+      .param("id", id)
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/events/" + id + "/reprocess")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.event.status").value("PROCESSED"));
+    assertThat(
+      db
+        .sql("SELECT count(*) FROM notifications WHERE event_id=:id")
+        .param("id", id)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(1);
+    assertThat(
+      db
+        .sql(
+          "SELECT count(*) FROM audit_logs WHERE resource_id=:id AND action='EVENT_REPROCESSED'"
+        )
+        .param("id", id)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(2);
+    db.sql("UPDATE applications SET enabled=false WHERE id=:id")
+      .param("id", app)
+      .update();
+    UUID skipped = localEvent("ORDER_PAID", "{\"orderNumber\":\"skipped\"}");
+    diagnose(skipped, "SKIPPED", "APPLICATION_DISABLED");
+    db.sql("UPDATE applications SET enabled=true WHERE id=:id")
+      .param("id", app)
+      .update();
+    mvc
+      .perform(
+        post("/api/v1/admin/events/" + skipped + "/reprocess")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.event.status").value("PROCESSED"));
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void multiTypeRuleValidatesAndRoutesPrefixesWithSpecificPriorities()
+    throws Exception {
+    var rule = currentRule();
+    var spec = (com.fasterxml.jackson.databind.node.ObjectNode) rule
+      .spec()
+      .deepCopy();
+    spec.remove("eventType");
+    spec
+      .putArray("eventTypes")
+      .add("CRM_SYNC_FAILED")
+      .add("CRM_SYNC_RECOVERED")
+      .add("CRM_ORDER_*");
+    spec.putObject("eventPriorities").put("CRM_SYNC_FAILED", "HIGH");
+    spec.put("priority", "NORMAL");
+    var input = json
+      .object()
+      .put("code", rule.code())
+      .put("name", rule.name())
+      .put("enabled", true);
+    input.set("spec", spec);
+    mvc
+      .perform(
+        put("/api/v1/admin/rules/" + rule.id())
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.spec.eventType").value("CRM_SYNC_FAILED"));
+    for (String type : List.of(
+      "CRM_SYNC_FAILED",
+      "CRM_SYNC_RECOVERED",
+      "CRM_ORDER_PAID"
+    )) {
+      UUID id = localEvent(type, "{\"orderNumber\":\"multi\"}");
+      routingEngine.route(id.toString());
+      assertThat(
+        db
+          .sql("SELECT priority FROM notifications WHERE event_id=:id")
+          .param("id", id)
+          .query(String.class)
+          .single()
+      ).isEqualTo(type.equals("CRM_SYNC_FAILED") ? "HIGH" : "NORMAL");
+    }
+    diagnose(
+      localEvent("CRM_NOT_COVERED", "{}"),
+      "NO_MATCH",
+      "NO_RULE_FOR_EVENT_TYPE"
+    );
+    spec.putObject("eventPriorities").put("OUTSIDE_TYPE", "HIGH");
+    mvc
+      .perform(
+        put("/api/v1/admin/rules/" + rule.id())
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void simulationUsesLatestEventReturnsProblemsAndCannotSend()
+    throws Exception {
+    UUID id = localEvent(
+      "ORDER_PAID",
+      "{\"orderNumber\":\"simulated\",\"optional\":null}"
+    );
+    var rule = currentRule();
+    long before = db
+      .sql("SELECT count(*) FROM notifications")
+      .query(Long.class)
+      .single();
+    mvc
+      .perform(
+        post("/api/v1/admin/rules/" + rule.id() + "/test")
+          .with(user("admin@mibess.com.br").roles("OPERATOR"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.eventId").value(id.toString()))
+      .andExpect(jsonPath("$.renderedMessage").value("Pedido simulated"))
+      .andExpect(
+        jsonPath("$.recipients[0].contactId").value(contact.toString())
+      )
+      .andExpect(jsonPath("$.problems.length()").value(0));
+    db.sql(
+      "UPDATE templates SET spec=spec || '{\"status\":\"DRAFT\"}'::jsonb WHERE id=:id"
+    )
+      .param("id", template)
+      .update();
+    db.sql("UPDATE channel_connections SET enabled=false WHERE id=:id")
+      .param("id", channel)
+      .update();
+    db.sql(
+      "UPDATE contacts SET spec=spec || '{\"whatsappOptIn\":false}'::jsonb WHERE id=:id"
+    )
+      .param("id", contact)
+      .update();
+    String response = mvc
+      .perform(
+        post("/api/v1/admin/rules/" + rule.id() + "/test")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content("{\"data\":{}}")
+      )
+      .andExpect(status().isOk())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    assertThat(response).contains(
+      "CHANNEL_DISABLED",
+      "TEMPLATE_NOT_APPROVED",
+      "CONSENT_REQUIRED",
+      "MISSING_TEMPLATE_VARIABLE"
+    );
+    assertThat(
+      db.sql("SELECT count(*) FROM notifications").query(Long.class).single()
+    ).isEqualTo(before);
+    mvc
+      .perform(
+        get("/api/v1/admin/applications/" + app + "/event-catalog").with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].eventType").value("ORDER_PAID"))
+      .andExpect(jsonPath("$[0].dataFields[0]").value("optional"))
+      .andExpect(jsonPath("$[0].sampleData.orderNumber").value("simulated"));
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void integrationHealthDetectsMissingRuleEmptyGroupTemplateAndChannel()
+    throws Exception {
+    diagnose(
+      localEvent("CRM_SYNC_RECOVERED", "{}"),
+      "NO_MATCH",
+      "NO_RULE_FOR_EVENT_TYPE"
+    );
+    db.sql(
+      "UPDATE contact_groups SET spec='{\"members\":[]}'::jsonb WHERE id=:id"
+    )
+      .param("id", group)
+      .update();
+    db.sql(
+      "UPDATE templates SET spec=spec || '{\"status\":\"DRAFT\"}'::jsonb WHERE id=:id"
+    )
+      .param("id", template)
+      .update();
+    db.sql("UPDATE channel_connections SET enabled=false WHERE id=:id")
+      .param("id", channel)
+      .update();
+    String response = mvc
+      .perform(
+        get("/api/v1/admin/applications/" + app + "/health").with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.noMatch24h").value(1))
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    assertThat(response).contains(
+      "EVENT_TYPE_WITHOUT_RULE",
+      "ACTIVE_GROUP_MEMBERS",
+      "TEMPLATE_APPROVED",
+      "CHANNEL_CONNECTION",
+      "ERROR"
+    );
+    mvc
+      .perform(
+        get("/api/v1/admin/dashboard?applicationId=" + app).with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.NO_MATCH").value(1));
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void integrationMutationsEnforceRolesCsrfAndWorkspace() throws Exception {
+    UUID id = localEvent("CRM_TEST", "{}");
+    diagnose(id, "NO_MATCH", "NO_RULE_FOR_EVENT_TYPE");
+    for (String url : List.of(
+      "/api/v1/admin/events/" + id + "/reprocess",
+      "/api/v1/admin/rules/" + currentRule().id() + "/test"
+    )) {
+      mvc
+        .perform(post(url).with(user("admin@mibess.com.br").roles("ADMIN")))
+        .andExpect(status().isForbidden());
+      mvc
+        .perform(
+          post(url)
+            .with(user("admin@mibess.com.br").roles("VIEWER"))
+            .with(csrf())
+        )
+        .andExpect(status().isForbidden());
+      mvc.perform(post(url).with(csrf())).andExpect(status().isUnauthorized());
+    }
+    UUID foreign = UUID.randomUUID(),
+      foreignApp = UUID.randomUUID();
+    db.sql("INSERT INTO workspaces(id,name) VALUES(:id,'Other')")
+      .param("id", foreign)
+      .update();
+    store.save(
+      Kind.APPLICATIONS,
+      foreign,
+      foreignApp,
+      "FOREIGN",
+      "Foreign",
+      true,
+      json.object()
+    );
+    UUID foreignEvent = eventService
+      .accept(
+        new ApiKeyService.Application(foreignApp, foreign),
+        "foreign",
+        json.read("{\"type\":\"FOREIGN_EVENT\",\"data\":{}}")
+      )
+      .eventId();
+    for (String url : List.of(
+      "/api/v1/admin/events/" + foreignEvent,
+      "/api/v1/admin/applications/" + foreignApp + "/event-catalog",
+      "/api/v1/admin/applications/" + foreignApp + "/health"
+    ))
+      mvc
+        .perform(get(url).with(user("admin@mibess.com.br").roles("ADMIN")))
+        .andExpect(status().isNotFound());
+    mvc
+      .perform(
+        post("/api/v1/admin/events/" + foreignEvent + "/reprocess")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+      )
+      .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void concurrentReprocessingLocksEventAndCreatesExactlyOneNotification()
+    throws Exception {
+    UUID id = localEvent("CRM_REPROCESS_RACE", "{\"orderNumber\":\"race\"}");
+    await()
+      .atMost(Duration.ofSeconds(20))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql("SELECT status FROM events WHERE id=:id")
+            .param("id", id)
+            .query(String.class)
+            .single()
+        ).isEqualTo("NO_MATCH")
+      );
+    rule("CRM_REPROCESS_RACE", "CONTACT_GROUP", group, List.of());
+    try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var start = new java.util.concurrent.CountDownLatch(1);
+      List<java.util.concurrent.Callable<Integer>> tasks = new ArrayList<>();
+      for (int i = 0; i < 2; i++) tasks.add(() -> {
+        start.await();
+        return mvc
+          .perform(
+            post("/api/v1/admin/events/" + id + "/reprocess")
+              .with(user("admin@mibess.com.br").roles("OPERATOR"))
+              .with(csrf())
+          )
+          .andReturn()
+          .getResponse()
+          .getStatus();
+      });
+      var first = executor.submit(tasks.get(0));
+      var second = executor.submit(tasks.get(1));
+      start.countDown();
+      assertThat(List.of(first.get(), second.get())).containsExactlyInAnyOrder(
+        200,
+        409
+      );
+    }
+    assertThat(
+      db
+        .sql("SELECT count(*) FROM notifications WHERE event_id=:id")
+        .param("id", id)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(1);
+    assertThat(
+      db
+        .sql(
+          "SELECT count(*) FROM audit_logs WHERE resource_id=:id AND action='EVENT_REPROCESSED'"
+        )
+        .param("id", id)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(1);
+    await()
+      .atMost(Duration.ofSeconds(20))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql("SELECT status FROM notifications WHERE event_id=:id")
+            .param("id", id)
+            .query(String.class)
+            .single()
+        ).isEqualTo("SENT")
+      );
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void manualRequestLookupOnlyReturnsTheCurrentAuthorsWorkspaceRequest()
+    throws Exception {
+    var input = reviewManual(manualInput());
+    UUID notification = sendManual(input);
+    String path =
+      "/api/v1/admin/notifications/manual/requests/" +
+      input.path("requestId").asText();
+    mvc
+      .perform(get(path).with(user("admin@mibess.com.br").roles("OPERATOR")))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.notificationId").value(notification.toString()));
+    mvc
+      .perform(get(path).with(user("admin@mibess.com.br").roles("VIEWER")))
+      .andExpect(status().isForbidden());
+    db.sql(
+      "UPDATE notifications SET created_by='other-author@example.test' WHERE id=:id"
+    )
+      .param("id", notification)
+      .update();
+    mvc
+      .perform(get(path).with(user("admin@mibess.com.br").roles("ADMIN")))
+      .andExpect(status().isNotFound());
+  }
+
+  @Test
+  @org.springframework.transaction.annotation.Transactional
+  void catalogAndSimulationChooseLastReceivedPayloadForEachMatchingType()
+    throws Exception {
+    UUID older = localEvent(
+      "ORDER_PAID",
+      "{\"orderNumber\":\"old\",\"oldField\":1}"
+    );
+    db.sql("UPDATE events SET created_at=now()-interval '1 hour' WHERE id=:id")
+      .param("id", older)
+      .update();
+    UUID latest = localEvent(
+      "ORDER_PAID",
+      "{\"orderNumber\":\"new\",\"customer\":{\"name\":\"Ana\"}}"
+    );
+    mvc
+      .perform(
+        get("/api/v1/admin/applications/" + app + "/event-catalog").with(
+          user("admin@mibess.com.br").roles("VIEWER")
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.length()").value(1))
+      .andExpect(jsonPath("$[0].eventId").value(latest.toString()))
+      .andExpect(
+        jsonPath("$[0].dataFields").value(
+          org.hamcrest.Matchers.hasItem("customer.name")
+        )
+      )
+      .andExpect(jsonPath("$[0].sampleData.oldField").doesNotExist());
+    mvc
+      .perform(
+        post("/api/v1/admin/rules/" + currentRule().id() + "/test")
+          .with(user("admin@mibess.com.br").roles("OPERATOR"))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.eventId").value(latest.toString()))
+      .andExpect(jsonPath("$.renderedMessage").value("Pedido new"));
+  }
+
+  @Autowired
   com.mibess.notify.event.EventService eventService;
 }

@@ -80,6 +80,17 @@ public class ResourceStore {
       .list();
   }
 
+  public List<Resource> rulesForApplication(UUID workspace, UUID application) {
+    return db
+      .sql(
+        "SELECT * FROM routing_rules WHERE workspace_id=:w AND spec->>'applicationId'=:a ORDER BY created_at,id"
+      )
+      .param("w", workspace)
+      .param("a", application.toString())
+      .query(this::row)
+      .list();
+  }
+
   public Resource get(Kind kind, UUID workspace, UUID id) {
     return db
       .sql("SELECT * FROM " + kind.table + " WHERE workspace_id=:w AND id=:id")

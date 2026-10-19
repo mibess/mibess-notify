@@ -86,3 +86,11 @@ Consulte [META.md](META.md) para o que depende da conta Meta. Publicar o painel 
 ## Migração V3 — envios manuais
 
 A V3 adiciona origem/autor/idempotência às notificações e permite referências nulas somente nos envios manuais, com CHECK por origem. É aditiva e preserva históricos existentes. Depois de aceitar notificações manuais, não reverta para imagens anteriores à V3 com mensagens manuais pendentes: esses workers antigos exigem aplicação/regra/template. Em uma recuperação, interrompa os workers, reconcilie os manuais em processamento e prefira corrigir mantendo a versão compatível com V3. Não reverta a migration nem apague histórico para fazer rollback.
+
+## Migração V4 — integração e diagnóstico
+
+A V4 adiciona `events.routing_diagnostics` com default `{}`, a tabela `event_timeline` e índices de consulta. Não remove nem renomeia colunas, não altera os eventos antigos e não exige reescrita dos contratos existentes. A imagem V3 pode iniciar com o schema V4; mantenha as migrations aplicadas durante rollback.
+
+A compatibilidade de schema não faz uma imagem anterior compreender `eventTypes` ou `eventPriorities`: ela lê somente `eventType` e `priority`. Antes de voltar à imagem anterior, desative a regra de múltiplos tipos e restaure regras individuais, com tipo exato e prioridade correspondente. Na integração CRM, conserve as oito regras individuais desativadas como configuração de recuperação; reative-as somente após desativar a regra consolidada. Nunca deixe ambos os conjuntos ativos, pois regras distintas podem criar duas notificações para o mesmo evento/destinatário. Coordene a troca com o publicador e confira eventos NO_MATCH no intervalo; não altere a regra Studio `ORDER_PAID`.
+
+O aceite fake em `infrastructure/smoke.py` verifica agora diagnóstico NO_MATCH, catálogo, simulação sem entrega, reprocessamento auditado sem duplicatas, prefixos/prioridade por evento e saúde, além de SENT→DELIVERED, evento idempotente, destinatário do evento e suppression. Execute somente no ambiente HML/local, com as credenciais já existentes no ambiente operacional. O script não imprime chaves e revoga a chave de teste e desativa os cadastros ao finalizar.

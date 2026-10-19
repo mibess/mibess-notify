@@ -2265,3 +2265,187 @@ tbody tr:hover {
     padding: 22px;
   }
 }
+
+/* Guided integrations share the panel, form and button design system. */
+nav .nav-caption {
+  display: block;
+  margin: 18px 10px 8px;
+}
+.resource-tabs,
+.selected-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.integration-alert {
+  padding: 22px;
+  margin-bottom: 24px;
+  border-left: 4px solid #b76c16;
+}
+.integration-alert .text-button {
+  display: flex;
+  margin-top: 8px;
+  text-align: left;
+}
+.integration-wizard {
+  padding: 28px;
+  max-width: 980px;
+}
+.wizard-top,
+.wizard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.wizard-top p {
+  margin: 0;
+  font-weight: 600;
+}
+.integration-wizard progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #6d4ad8;
+  margin: 18px 0;
+}
+.wizard-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
+  gap: 12px;
+  margin: 0 0 30px;
+}
+.wizard-steps li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #687184;
+  font-size: 12px;
+}
+.wizard-steps li span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #f0edf8;
+  color: #5e43ac;
+}
+.wizard-steps li.current {
+  font-weight: 700;
+  color: #5036a1;
+}
+.wizard-steps li.current span,
+.wizard-steps li.complete span {
+  color: white;
+  background: #6d4ad8;
+}
+.wizard-fields {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.wizard-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wizard-fields .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wizard-fields input:not([type="checkbox"]),
+.wizard-fields textarea,
+.wizard-fields select {
+  width: 100%;
+  min-width: 0;
+}
+.wizard-fields details {
+  padding: 15px;
+  background: #faf9fd;
+  border: 1px solid #ebe8f2;
+  border-radius: 10px;
+}
+.wizard-fields details[open] summary {
+  margin-bottom: 16px;
+}
+.wizard-fields details label {
+  margin-bottom: 12px;
+}
+.wizard-fields summary,
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.wizard-fields .btn {
+  justify-self: start;
+}
+.wizard-footer {
+  margin-top: 28px;
+  border-top: 1px solid #ebe8f2;
+  padding-top: 20px;
+}
+.health-check {
+  padding: 18px 0;
+  border-bottom: 1px solid #ebe8f2;
+}
+.health-check p,
+.diagnostic-card p {
+  width: 100%;
+}
+.event-choices {
+  min-width: 0;
+  border: 1px solid #ebe8f2;
+  padding: 16px;
+  border-radius: 10px;
+}
+.event-choices label {
+  margin: 10px 0;
+}
+.event-choices .selected-events {
+  margin-top: 12px;
+}
+.selected-events button,
+.integration-wizard dd,
+.integration-alert button,
+.code-text {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.message-preview,
+.record-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.integration-wizard h2 {
+  margin-bottom: 20px;
+}
+:focus-visible {
+  outline: 3px solid #7954da;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .integration-wizard {
+    padding: 18px;
+  }
+  .wizard-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .wizard-top {
+    align-items: flex-start;
+  }
+  .wizard-top .text-button {
+    flex-shrink: 0;
+  }
+  .health-check {
+    overflow-wrap: anywhere;
+  }
+}
