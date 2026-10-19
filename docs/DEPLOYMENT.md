@@ -2,7 +2,7 @@
 
 ## Estado
 
-HML e PRD publicados e saudáveis em 19/10/2026 no commit `7f7269f1d462a807668c081eb40a8713a8316aa7`, com suporte a imagens de identidade. O aceite HML usou provider fake; PRD validou quatro mensagens com imagem para o contato expressamente autorizado. As aplicações Artgian Studio, Artgian CRM, Sistema Comercial e IA-Jud receberam imagens padrão. Veja [IMAGES.md](IMAGES.md) e o registro de publicação ao final.
+HML e PRD publicados e saudáveis em 19/10/2026 no commit `f1bac5f856944d4fed54e3a40cd9b02cef2365a1`, com imagens compactas de **960 × 320 px**. Artgian Studio, Artgian CRM, Sistema Comercial e IA-Jud possuem artes minimalistas próprias configuradas em produção, entre 24 e 39 KB. Aceite HML com provider fake e upload/download real das quatro imagens confirmados; esta revisão visual não disparou mensagens adicionais. Veja [IMAGES.md](IMAGES.md).
 
 O provisionamento inicial e o acesso de deploy foram aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). Evidências desse marco:
 

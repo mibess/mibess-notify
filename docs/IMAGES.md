@@ -82,3 +82,18 @@ Por solicitação do proprietário, a versão com imagens foi publicada primeiro
 Os quatro testes foram publicados como eventos `NOTIFY_IMAGE_PREVIEW` nas próprias aplicações, destinados exclusivamente ao contato autorizado **+55 16 99720-0212**. O fluxo completo (evento → fila → regra → imagem herdada da aplicação → Evolution → webhook) foi conferido no histórico. Cada envio teve uma tentativa. Foram usadas chaves de API temporárias, revogadas após aceitar cada evento, sem rotação das chaves operacionais. Regras/templates de teste foram desativados após o envio; histórico e auditoria foram preservados.
 
 As regras de negócio existentes conservaram configuração e estado. Os templates ativos da Evolution herdam a imagem da aplicação; os próximos eventos usam a identidade correspondente sem alteração nos publicadores. IA-Jud e Sistema Comercial ficaram com imagem cadastrada para os próximos fluxos; não foram criadas regras de negócio para essas aplicações. O usuário pode substituir as artes pelo upload no painel.
+
+## Identidades compactas por aplicação — 19/10/2026
+
+Após revisão visual solicitada pelo proprietário, o formato passou para **960 × 320 px** (37% menos altura). A atualização foi publicada em [HML](https://github.com/mibess/mibess-notify/actions/runs/39304856689) e [PRD](https://github.com/mibess/mibess-notify/actions/runs/39305750552), no commit `f1bac5f856944d4fed54e3a40cd9b02cef2365a1`. As quatro artes personalizadas foram carregadas pela API autenticada de upload e associadas às aplicações em produção.
+
+| Aplicação | Arquivo | Imagem de produção | Bytes |
+|---|---|---|---:|
+| Artgian Studio | `assets/notification-images/v2/artgian-studio.jpg` | `5b71d278-575e-4e0d-81ba-0f5372174a26` | 38940 |
+| Artgian CRM | `assets/notification-images/v2/artgian-crm.jpg` | `d038deb4-1200-4fe2-be08-91a86cbaa7d5` | 24466 |
+| Sistema Comercial | `assets/notification-images/v2/sistema-comercial.jpg` | `81964187-dafa-4f0a-b2c0-5cf00fc39c9f` | 36184 |
+| IA-Jud | `assets/notification-images/v2/ia-jud.jpg` | `4bf238df-5a79-4fd3-b175-a78dee3fa5aa` | 24342 |
+
+As referências de marca do Studio, CRM e Comercial foram extraídas dos projetos existentes; IA-Jud recebeu uma composição própria em ameixa/lavanda. As artes foram criadas com o ImageGen integrado e exportadas em JPEG, com os prompts preservados em `assets/notification-images/v2/prompts.json`.
+
+Validação: 47 testes backend e 19 frontend, build Angular/CSP e pipeline completos aprovados. Aceite HML com provider fake concluído (`133bc0a9-0645-4eb0-91b2-8188a57d4d61`). Os downloads autenticados de produção tiveram SHA-256 idêntico aos arquivos versionados. As quatro imagens anteriores continuam legíveis no histórico. Configuração e estado de regras/templates foram comparados e preservados; os templates ativos continuam herdando o novo padrão da aplicação. Nenhuma mensagem real adicional foi disparada nesta revisão visual. Os dez containers de serviços compartilhados conservaram seus IDs.
