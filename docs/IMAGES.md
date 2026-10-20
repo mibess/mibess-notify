@@ -1,5 +1,25 @@
 # Imagens nas notificações
 
+## Identidade por origem e evento — catálogo v3
+
+O catálogo em `infrastructure/event-notification-matrix.json` define **40 artes** e **44 combinações sem sobreposição de aplicação, evento e condições**. As aplicações continuam sendo Artgian CRM (`ARTGIAN_CRM`) e Artgian Studio (`ARTGIAN`). A origem é exibida no título: `Shopee - Novo Pedido`, `Mercado Livre - Novo Pedido` ou `Artgian Site - Novo Pedido`. Os campos de origem dos publicadores permanecem intactos; por exemplo, `data.channel: Artgian Studio` corresponde ao título visual `Artgian Site`.
+
+Cada origem do CRM tem 13 artes: novo pedido, pagamento confirmado, pagamento recusado, pedido cancelado, pedido reembolsado, pagamento em contestação, pedido enviado, pedido saiu para entrega, pedido entregue, revisão dos custos, reconexão necessária, falha na sincronização e sincronização normalizada. O teste da integração tem a arte `Artgian CRM - Teste de Notificação`. Os quatro eventos do Studio reutilizam as artes correspondentes de Artgian Site.
+
+As artes são originais tipográficos gerados por código, com ícones geométricos próprios. Os SVGs editáveis e JPEGs finais ficam em `assets/notification-images/v3/`. Shopee usa laranja; Mercado Livre, amarelo e marinho; Artgian Site, marinho e dourado; CRM, terracota. O evento é o texto principal e a origem aparece acima. Os arquivos mantêm **960 × 320 px e até 500 KB**. O contato visual do conjunto está em `contact-sheet.jpg`.
+
+Reprodução local, sem chamadas externas nem alterações em produção:
+
+```bash
+python3 infrastructure/build-event-notification-assets.py
+```
+
+Requer Pillow e Arial Bold (ou `--font caminho/para/fonte-bold.ttf`). O gerador valida dimensões, formato, peso, referências de imagens e exclusividade das 44 combinações, incluindo rejeição de origem ou estado desconhecido. O manifesto registra o SHA-256 de cada JPEG. Cada SVG e JPEG nasce das mesmas primitivas; nenhuma imagem raster anterior é editada.
+
+O roteamento usa recursos já existentes: regras exatas por evento/origem/estado selecionam templates com `spec.imageId`. Não há nova migration ou seleção dinâmica de imagem no envio. As regras amplas anteriores, como `CRM_*`, precisam ser removidas ou desativadas quando as regras exatas forem ativadas, pois cada regra correspondente gera sua própria notificação. O corpo da mensagem e suas variáveis são preservados; só o título ganha o padrão. As subcondições separam os quatro problemas de pagamento, os três estados de entrega e reconexão necessária das demais falhas de sincronização.
+
+O catálogo v3 foi ativado em produção em **20/10/2026**: 44 regras/templates exatos, 40 imagens carregadas e nove testes entregues com uma tentativa cada. Os dois grupos passaram ao contato definitivo após os testes. Permanecem 42 objetos privados: 40 artes por evento e as duas identidades padrão das aplicações. Sete imagens antigas sem uso foram removidas, com cópia protegida. Veja [aceite e limpeza](PRODUCTION_RESET_20261020.md). Os registros históricos abaixo descrevem entregas anteriores e não representam o cadastro corrente depois da limpeza.
+
 ## Uso no painel
 
 - **Integrações → editar aplicação:** carregue a identidade do cliente em “Imagem padrão da aplicação / cliente” ou use “Criar imagem simples”. Clique em Salvar para associá-la à aplicação. Eventos usam essa imagem automaticamente na Evolution.

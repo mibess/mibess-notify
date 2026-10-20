@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320">
+<rect x="0" y="0" width="960" height="320" rx="0" fill="#FFF0EA"/>
+<rect x="18" y="18" width="924" height="284" rx="20" fill="#FFFFFF"/>
+<rect x="769" y="38" width="153" height="244" rx="14" fill="#FFF0EA"/>
+<rect x="41" y="43" width="8" height="31" rx="4" fill="#EE4D2D"/>
+<text x="64" y="68" fill="#8F2817" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700">Shopee</text>
+<text x="42" y="190" fill="#182B3D" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">Pedido Enviado</text>
+<rect x="42" y="264" width="65" height="6" rx="3" fill="#EE4D2D"/>
+<rect x="800" y="137" width="55" height="51" rx="3" fill="#FFFFFF" stroke="#8F2817" stroke-width="5"/>
+<polyline points="855,150 874,150 889,168 889,188 855,188" fill="none" stroke="#8F2817" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="860,155 860,170 883,170" fill="none" stroke="#8F2817" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="816" cy="192" r="9" fill="#FFFFFF" stroke="#8F2817" stroke-width="5"/>
+<circle cx="873" cy="192" r="9" fill="#FFFFFF" stroke="#8F2817" stroke-width="5"/>
+</svg>

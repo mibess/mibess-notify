@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320">
+<rect x="0" y="0" width="960" height="320" rx="0" fill="#F8ECE7"/>
+<rect x="18" y="18" width="924" height="284" rx="20" fill="#FFFFFF"/>
+<rect x="769" y="38" width="153" height="244" rx="14" fill="#F8ECE7"/>
+<rect x="41" y="43" width="8" height="31" rx="4" fill="#B35F47"/>
+<text x="64" y="68" fill="#68392D" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700">Artgian CRM</text>
+<text x="42" y="190" fill="#182B3D" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">Teste de Notificação</text>
+<rect x="42" y="264" width="65" height="6" rx="3" fill="#B35F47"/>
+<polyline points="813,186 821,173 821,146 835,129 855,129 869,146 869,173 877,186 813,186" fill="none" stroke="#68392D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="836,198 845,204 854,198" fill="none" stroke="#68392D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="845,129 845,120" fill="none" stroke="#68392D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

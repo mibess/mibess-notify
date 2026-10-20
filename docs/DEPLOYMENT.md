@@ -2,7 +2,7 @@
 
 ## Estado
 
-HML e PRD publicados e saudáveis em 19/10/2026 no commit `f1bac5f856944d4fed54e3a40cd9b02cef2365a1`, com imagens compactas de **960 × 320 px**. Artgian Studio, Artgian CRM, Sistema Comercial e IA-Jud possuem artes minimalistas próprias configuradas em produção, entre 24 e 39 KB. Aceite HML com provider fake e upload/download real das quatro imagens confirmados; esta revisão visual não disparou mensagens adicionais. Veja [IMAGES.md](IMAGES.md).
+Em 20/10/2026, a configuração de produção foi simplificada para **Artgian Studio e Artgian CRM**, com 44 regras e 40 imagens por origem/evento. Histórico até a limpeza zerado, nove testes reais entregues e destinatário definitivo configurado. O CRM publicou `be48df2f90186987ed3d2621b6b236aaf89fd6f5`. O Notify mantém o runtime saudável `f1bac5f856944d4fed54e3a40cd9b02cef2365a1`: os novos títulos, regras e imagens usam capacidades já publicadas. HML não foi modificado. Veja [registro da limpeza e aceite](PRODUCTION_RESET_20261020.md) e [imagens](IMAGES.md).
 
 O provisionamento inicial e o acesso de deploy foram aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). Evidências desse marco:
 

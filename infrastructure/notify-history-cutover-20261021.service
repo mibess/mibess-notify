@@ -1,0 +1,11 @@
+[Unit]
+Description=One-time Notify history cutover for 21 October 2026
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/opt/mibess-notify/maintenance/20261021/run-notify-history-cutover-20261021.sh
+TimeoutStartSec=35min
+NoNewPrivileges=true

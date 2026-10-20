@@ -1,0 +1,1523 @@
+{
+  "version": 3,
+  "width": 960,
+  "height": 320,
+  "maxBytes": 500000,
+  "provenance": {
+    "method": "Original code-native typography and geometric icons; SVG and JPEG generated from shared primitives, without raster-image editing.",
+    "generator": "infrastructure/build-event-notification-assets.py",
+    "font": "Arial Bold (or --font equivalent)",
+    "imageGenerationService": null
+  },
+  "sources": {
+    "shopee": {
+      "name": "Shopee",
+      "channel": "Shopee",
+      "accent": "#EE4D2D",
+      "ink": "#8F2817",
+      "tint": "#FFF0EA"
+    },
+    "mercado-livre": {
+      "name": "Mercado Livre",
+      "channel": "Mercado Livre",
+      "accent": "#FFE600",
+      "ink": "#253260",
+      "tint": "#FFFBE0"
+    },
+    "artgian-site": {
+      "name": "Artgian Site",
+      "channel": "Artgian Studio",
+      "accent": "#B79149",
+      "ink": "#182B3D",
+      "tint": "#F4F1E8"
+    },
+    "artgian-crm": {
+      "name": "Artgian CRM",
+      "channel": null,
+      "accent": "#B35F47",
+      "ink": "#68392D",
+      "tint": "#F8ECE7"
+    }
+  },
+  "artworks": {
+    "shopee-novo-pedido": {
+      "source": "shopee",
+      "eventLabel": "Novo Pedido",
+      "title": "Shopee - Novo Pedido",
+      "icon": "box",
+      "file": "assets/notification-images/v3/shopee-novo-pedido.jpg",
+      "svg": "assets/notification-images/v3/shopee-novo-pedido.svg",
+      "byteSize": 25371,
+      "sha256": "c13a2e02493ab4d8e4ec128e2a3793cb1487a7606727f441ceff362b00ed8a2c"
+    },
+    "shopee-pagamento-confirmado": {
+      "source": "shopee",
+      "eventLabel": "Pagamento Confirmado",
+      "title": "Shopee - Pagamento Confirmado",
+      "icon": "check",
+      "file": "assets/notification-images/v3/shopee-pagamento-confirmado.jpg",
+      "svg": "assets/notification-images/v3/shopee-pagamento-confirmado.svg",
+      "byteSize": 32975,
+      "sha256": "fa399b4379178fbf0a6d4efab2750290318aa180ab5bfe39c9e567ec6cc04a73"
+    },
+    "shopee-pagamento-recusado": {
+      "source": "shopee",
+      "eventLabel": "Pagamento Recusado",
+      "title": "Shopee - Pagamento Recusado",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/shopee-pagamento-recusado.jpg",
+      "svg": "assets/notification-images/v3/shopee-pagamento-recusado.svg",
+      "byteSize": 31159,
+      "sha256": "ca720228e705d008671d7455cba4669b56e1add0c67b118587c7ec9d76113c5d"
+    },
+    "shopee-pedido-cancelado": {
+      "source": "shopee",
+      "eventLabel": "Pedido Cancelado",
+      "title": "Shopee - Pedido Cancelado",
+      "icon": "cross",
+      "file": "assets/notification-images/v3/shopee-pedido-cancelado.jpg",
+      "svg": "assets/notification-images/v3/shopee-pedido-cancelado.svg",
+      "byteSize": 29811,
+      "sha256": "f746976cdbdeadab0e26fb297636a6090388b9c4aa7c97fbd3e065cc4b06f8a8"
+    },
+    "shopee-pedido-reembolsado": {
+      "source": "shopee",
+      "eventLabel": "Pedido Reembolsado",
+      "title": "Shopee - Pedido Reembolsado",
+      "icon": "return",
+      "file": "assets/notification-images/v3/shopee-pedido-reembolsado.jpg",
+      "svg": "assets/notification-images/v3/shopee-pedido-reembolsado.svg",
+      "byteSize": 29966,
+      "sha256": "c08a42b79b83062a8c4d024f10120864f8d52b4d7cf8c0ae83fdae1419e991a3"
+    },
+    "shopee-pagamento-em-contestacao": {
+      "source": "shopee",
+      "eventLabel": "Pagamento em Contestação",
+      "title": "Shopee - Pagamento em Contestação",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/shopee-pagamento-em-contestacao.jpg",
+      "svg": "assets/notification-images/v3/shopee-pagamento-em-contestacao.svg",
+      "byteSize": 36269,
+      "sha256": "6c558e79fe5460f1741893ac214a1047592a310091d9231da62586d6a50f49cb"
+    },
+    "shopee-pedido-enviado": {
+      "source": "shopee",
+      "eventLabel": "Pedido Enviado",
+      "title": "Shopee - Pedido Enviado",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/shopee-pedido-enviado.jpg",
+      "svg": "assets/notification-images/v3/shopee-pedido-enviado.svg",
+      "byteSize": 26291,
+      "sha256": "2cf02fd255b2d0a9be788c73735569f303329647a0c14447ec351d4fd942d79c"
+    },
+    "shopee-pedido-saiu-para-entrega": {
+      "source": "shopee",
+      "eventLabel": "Pedido Saiu para Entrega",
+      "title": "Shopee - Pedido Saiu para Entrega",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/shopee-pedido-saiu-para-entrega.jpg",
+      "svg": "assets/notification-images/v3/shopee-pedido-saiu-para-entrega.svg",
+      "byteSize": 33352,
+      "sha256": "d5a67c3a1a329c151b04dbdae58c51cb0e0aca3583e822d1799e4ab800302eaa"
+    },
+    "shopee-pedido-entregue": {
+      "source": "shopee",
+      "eventLabel": "Pedido Entregue",
+      "title": "Shopee - Pedido Entregue",
+      "icon": "check",
+      "file": "assets/notification-images/v3/shopee-pedido-entregue.jpg",
+      "svg": "assets/notification-images/v3/shopee-pedido-entregue.svg",
+      "byteSize": 28068,
+      "sha256": "60f08d58c7c80674069951e616b2bfebc3b2bff98b71c2cf9cb5566cd02440b8"
+    },
+    "shopee-revise-os-custos-do-pedido": {
+      "source": "shopee",
+      "eventLabel": "Revise os Custos do Pedido",
+      "title": "Shopee - Revise os Custos do Pedido",
+      "icon": "receipt",
+      "file": "assets/notification-images/v3/shopee-revise-os-custos-do-pedido.jpg",
+      "svg": "assets/notification-images/v3/shopee-revise-os-custos-do-pedido.svg",
+      "byteSize": 35542,
+      "sha256": "871728c878d1a6de2c6a1688f032cb43efcac2296761cc680df0384ce3c5226a"
+    },
+    "shopee-reconexao-necessaria": {
+      "source": "shopee",
+      "eventLabel": "Reconexão Necessária",
+      "title": "Shopee - Reconexão Necessária",
+      "icon": "link",
+      "file": "assets/notification-images/v3/shopee-reconexao-necessaria.jpg",
+      "svg": "assets/notification-images/v3/shopee-reconexao-necessaria.svg",
+      "byteSize": 32855,
+      "sha256": "79f7a899ae2e8b3f1c757d6a7e18274ae95c686c738706e647523c502f2f814b"
+    },
+    "shopee-falha-na-sincronizacao": {
+      "source": "shopee",
+      "eventLabel": "Falha na Sincronização",
+      "title": "Shopee - Falha na Sincronização",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/shopee-falha-na-sincronizacao.jpg",
+      "svg": "assets/notification-images/v3/shopee-falha-na-sincronizacao.svg",
+      "byteSize": 31485,
+      "sha256": "7dc84e19ae041d3bd64b64f81c7cbe2564773dba8a704bce8a11d1c30b098280"
+    },
+    "shopee-sincronizacao-normalizada": {
+      "source": "shopee",
+      "eventLabel": "Sincronização Normalizada",
+      "title": "Shopee - Sincronização Normalizada",
+      "icon": "check",
+      "file": "assets/notification-images/v3/shopee-sincronizacao-normalizada.jpg",
+      "svg": "assets/notification-images/v3/shopee-sincronizacao-normalizada.svg",
+      "byteSize": 36753,
+      "sha256": "f0ad7ead39f96007838c22cdc9935bc50f758fa7edfa80ff84441cedae8edc88"
+    },
+    "mercado-livre-novo-pedido": {
+      "source": "mercado-livre",
+      "eventLabel": "Novo Pedido",
+      "title": "Mercado Livre - Novo Pedido",
+      "icon": "box",
+      "file": "assets/notification-images/v3/mercado-livre-novo-pedido.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-novo-pedido.svg",
+      "byteSize": 25678,
+      "sha256": "969230622e537b32b1b1867295bb06e65952808c7f2873ab0c2de858970f8664"
+    },
+    "mercado-livre-pagamento-confirmado": {
+      "source": "mercado-livre",
+      "eventLabel": "Pagamento Confirmado",
+      "title": "Mercado Livre - Pagamento Confirmado",
+      "icon": "check",
+      "file": "assets/notification-images/v3/mercado-livre-pagamento-confirmado.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pagamento-confirmado.svg",
+      "byteSize": 33299,
+      "sha256": "8f2b631caa7ad9229f176180782ab581f9a4b899cc2392a7f87c8b068de55440"
+    },
+    "mercado-livre-pagamento-recusado": {
+      "source": "mercado-livre",
+      "eventLabel": "Pagamento Recusado",
+      "title": "Mercado Livre - Pagamento Recusado",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/mercado-livre-pagamento-recusado.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pagamento-recusado.svg",
+      "byteSize": 31485,
+      "sha256": "58c9d700f68eb1a93b3430685f6ee65a3903f50e27e962119a1a33f2c279397f"
+    },
+    "mercado-livre-pedido-cancelado": {
+      "source": "mercado-livre",
+      "eventLabel": "Pedido Cancelado",
+      "title": "Mercado Livre - Pedido Cancelado",
+      "icon": "cross",
+      "file": "assets/notification-images/v3/mercado-livre-pedido-cancelado.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pedido-cancelado.svg",
+      "byteSize": 30102,
+      "sha256": "3dfba2085760b6aa7575b772dd68fb0a4ab765377c25e97a7ded538124ddec63"
+    },
+    "mercado-livre-pedido-reembolsado": {
+      "source": "mercado-livre",
+      "eventLabel": "Pedido Reembolsado",
+      "title": "Mercado Livre - Pedido Reembolsado",
+      "icon": "return",
+      "file": "assets/notification-images/v3/mercado-livre-pedido-reembolsado.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pedido-reembolsado.svg",
+      "byteSize": 30408,
+      "sha256": "b11cb4322d3e090fdb77484da00f914dfa864836a669240b552a3e728d27c918"
+    },
+    "mercado-livre-pagamento-em-contestacao": {
+      "source": "mercado-livre",
+      "eventLabel": "Pagamento em Contestação",
+      "title": "Mercado Livre - Pagamento em Contestação",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/mercado-livre-pagamento-em-contestacao.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pagamento-em-contestacao.svg",
+      "byteSize": 36560,
+      "sha256": "1b49bbe28b4c29d337f6f2d3abbc36d856ca2119e6cf6a74f9a40b42a9dd2f45"
+    },
+    "mercado-livre-pedido-enviado": {
+      "source": "mercado-livre",
+      "eventLabel": "Pedido Enviado",
+      "title": "Mercado Livre - Pedido Enviado",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/mercado-livre-pedido-enviado.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pedido-enviado.svg",
+      "byteSize": 26577,
+      "sha256": "f9ae7d9f21820ab13a7a4f76b53aae9851e5d3901f928cbf35fbbbc53a8ed9c0"
+    },
+    "mercado-livre-pedido-saiu-para-entrega": {
+      "source": "mercado-livre",
+      "eventLabel": "Pedido Saiu para Entrega",
+      "title": "Mercado Livre - Pedido Saiu para Entrega",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/mercado-livre-pedido-saiu-para-entrega.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pedido-saiu-para-entrega.svg",
+      "byteSize": 33678,
+      "sha256": "7af0f5bf395ec45c2015d3e5e119ee4cf98c844786a4df36b964c430bd07e77c"
+    },
+    "mercado-livre-pedido-entregue": {
+      "source": "mercado-livre",
+      "eventLabel": "Pedido Entregue",
+      "title": "Mercado Livre - Pedido Entregue",
+      "icon": "check",
+      "file": "assets/notification-images/v3/mercado-livre-pedido-entregue.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-pedido-entregue.svg",
+      "byteSize": 28367,
+      "sha256": "a85ae9c959f4f095af8a4ce652090a00398fcf4ddcd2fbd0da01a3411480be7d"
+    },
+    "mercado-livre-revise-os-custos-do-pedido": {
+      "source": "mercado-livre",
+      "eventLabel": "Revise os Custos do Pedido",
+      "title": "Mercado Livre - Revise os Custos do Pedido",
+      "icon": "receipt",
+      "file": "assets/notification-images/v3/mercado-livre-revise-os-custos-do-pedido.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-revise-os-custos-do-pedido.svg",
+      "byteSize": 35810,
+      "sha256": "bad8df51261a6c3d372af45d6977cf35e92417d1e9b23c41fe1b01529d5413f8"
+    },
+    "mercado-livre-reconexao-necessaria": {
+      "source": "mercado-livre",
+      "eventLabel": "Reconexão Necessária",
+      "title": "Mercado Livre - Reconexão Necessária",
+      "icon": "link",
+      "file": "assets/notification-images/v3/mercado-livre-reconexao-necessaria.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-reconexao-necessaria.svg",
+      "byteSize": 33145,
+      "sha256": "d1acf65d8d6fcf3e605e150ddfaa436f486e854a12108f2117cbbf42a16b1407"
+    },
+    "mercado-livre-falha-na-sincronizacao": {
+      "source": "mercado-livre",
+      "eventLabel": "Falha na Sincronização",
+      "title": "Mercado Livre - Falha na Sincronização",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/mercado-livre-falha-na-sincronizacao.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-falha-na-sincronizacao.svg",
+      "byteSize": 31780,
+      "sha256": "2f20405ea3e93968caa97207d8f41410f61c49c38af73d788686e37d661ca506"
+    },
+    "mercado-livre-sincronizacao-normalizada": {
+      "source": "mercado-livre",
+      "eventLabel": "Sincronização Normalizada",
+      "title": "Mercado Livre - Sincronização Normalizada",
+      "icon": "check",
+      "file": "assets/notification-images/v3/mercado-livre-sincronizacao-normalizada.jpg",
+      "svg": "assets/notification-images/v3/mercado-livre-sincronizacao-normalizada.svg",
+      "byteSize": 37082,
+      "sha256": "07fa6402cad4b7d431f3ec516fb78b1f580f3e79a7677111babb134c697800ba"
+    },
+    "artgian-site-novo-pedido": {
+      "source": "artgian-site",
+      "eventLabel": "Novo Pedido",
+      "title": "Artgian Site - Novo Pedido",
+      "icon": "box",
+      "file": "assets/notification-images/v3/artgian-site-novo-pedido.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-novo-pedido.svg",
+      "byteSize": 24582,
+      "sha256": "8b3f35b6dfbaad0223f1ab7a576439a14550c1efb7848a1230198373bccd5f78"
+    },
+    "artgian-site-pagamento-confirmado": {
+      "source": "artgian-site",
+      "eventLabel": "Pagamento Confirmado",
+      "title": "Artgian Site - Pagamento Confirmado",
+      "icon": "check",
+      "file": "assets/notification-images/v3/artgian-site-pagamento-confirmado.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pagamento-confirmado.svg",
+      "byteSize": 32176,
+      "sha256": "d6846ae08fc200f1a19d78d67c4c2b1184dcc86d06be0d44fd24d2aae13d2c29"
+    },
+    "artgian-site-pagamento-recusado": {
+      "source": "artgian-site",
+      "eventLabel": "Pagamento Recusado",
+      "title": "Artgian Site - Pagamento Recusado",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/artgian-site-pagamento-recusado.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pagamento-recusado.svg",
+      "byteSize": 30478,
+      "sha256": "9c026b76e00e835be730667d12e7393fa2088f84fcb84b648a53fc849235a2b7"
+    },
+    "artgian-site-pedido-cancelado": {
+      "source": "artgian-site",
+      "eventLabel": "Pedido Cancelado",
+      "title": "Artgian Site - Pedido Cancelado",
+      "icon": "cross",
+      "file": "assets/notification-images/v3/artgian-site-pedido-cancelado.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pedido-cancelado.svg",
+      "byteSize": 28966,
+      "sha256": "09d0bbb7781058f6efdc5e5672c2d20ff1e92d4646a23d6f1f30dd2f6f981463"
+    },
+    "artgian-site-pedido-reembolsado": {
+      "source": "artgian-site",
+      "eventLabel": "Pedido Reembolsado",
+      "title": "Artgian Site - Pedido Reembolsado",
+      "icon": "return",
+      "file": "assets/notification-images/v3/artgian-site-pedido-reembolsado.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pedido-reembolsado.svg",
+      "byteSize": 29465,
+      "sha256": "49a3c883c548fe938c4a9e3c25a30005993d218f52a9d6c46ae098b1a4373ca3"
+    },
+    "artgian-site-pagamento-em-contestacao": {
+      "source": "artgian-site",
+      "eventLabel": "Pagamento em Contestação",
+      "title": "Artgian Site - Pagamento em Contestação",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/artgian-site-pagamento-em-contestacao.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pagamento-em-contestacao.svg",
+      "byteSize": 35524,
+      "sha256": "48645f39af09e8ad947433d60d339014cc5b104eb14fd4ae14a83ef2208b9823"
+    },
+    "artgian-site-pedido-enviado": {
+      "source": "artgian-site",
+      "eventLabel": "Pedido Enviado",
+      "title": "Artgian Site - Pedido Enviado",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/artgian-site-pedido-enviado.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pedido-enviado.svg",
+      "byteSize": 25670,
+      "sha256": "100b2695c2a23b546ffe3d2e0265213a42fc8fd3dd8e52a22d90183a7cb67940"
+    },
+    "artgian-site-pedido-saiu-para-entrega": {
+      "source": "artgian-site",
+      "eventLabel": "Pedido Saiu para Entrega",
+      "title": "Artgian Site - Pedido Saiu para Entrega",
+      "icon": "truck",
+      "file": "assets/notification-images/v3/artgian-site-pedido-saiu-para-entrega.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pedido-saiu-para-entrega.svg",
+      "byteSize": 32702,
+      "sha256": "28c5ea4250630b0f3ec747323bae2771fb739203c46ca4063700f41c11c2b37a"
+    },
+    "artgian-site-pedido-entregue": {
+      "source": "artgian-site",
+      "eventLabel": "Pedido Entregue",
+      "title": "Artgian Site - Pedido Entregue",
+      "icon": "check",
+      "file": "assets/notification-images/v3/artgian-site-pedido-entregue.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-pedido-entregue.svg",
+      "byteSize": 27325,
+      "sha256": "77a2c34b630bfc8252120beeee8a76edcb4f739b870de23f115262ad217c1519"
+    },
+    "artgian-site-revise-os-custos-do-pedido": {
+      "source": "artgian-site",
+      "eventLabel": "Revise os Custos do Pedido",
+      "title": "Artgian Site - Revise os Custos do Pedido",
+      "icon": "receipt",
+      "file": "assets/notification-images/v3/artgian-site-revise-os-custos-do-pedido.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-revise-os-custos-do-pedido.svg",
+      "byteSize": 34790,
+      "sha256": "602f61d9acff5a9e4faac200c8da98a6a1701a9cf41c50e6d6cf86e0e49b4134"
+    },
+    "artgian-site-reconexao-necessaria": {
+      "source": "artgian-site",
+      "eventLabel": "Reconexão Necessária",
+      "title": "Artgian Site - Reconexão Necessária",
+      "icon": "link",
+      "file": "assets/notification-images/v3/artgian-site-reconexao-necessaria.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-reconexao-necessaria.svg",
+      "byteSize": 32037,
+      "sha256": "88a65c1ee9cbff1f798f832e0d00bd7ee54f74ca58bcba8afef47b3347e22db3"
+    },
+    "artgian-site-falha-na-sincronizacao": {
+      "source": "artgian-site",
+      "eventLabel": "Falha na Sincronização",
+      "title": "Artgian Site - Falha na Sincronização",
+      "icon": "alert",
+      "file": "assets/notification-images/v3/artgian-site-falha-na-sincronizacao.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-falha-na-sincronizacao.svg",
+      "byteSize": 30794,
+      "sha256": "924fa76ae64c523cac8cb08798abfc9efebcd82371b4708444fd489a35f2bb56"
+    },
+    "artgian-site-sincronizacao-normalizada": {
+      "source": "artgian-site",
+      "eventLabel": "Sincronização Normalizada",
+      "title": "Artgian Site - Sincronização Normalizada",
+      "icon": "check",
+      "file": "assets/notification-images/v3/artgian-site-sincronizacao-normalizada.jpg",
+      "svg": "assets/notification-images/v3/artgian-site-sincronizacao-normalizada.svg",
+      "byteSize": 35936,
+      "sha256": "cb5677381502fb0a9a783a44aaf3fc19730697e7247132c3dd155166ab119865"
+    },
+    "artgian-crm-teste-de-notificacao": {
+      "source": "artgian-crm",
+      "eventLabel": "Teste de Notificação",
+      "title": "Artgian CRM - Teste de Notificação",
+      "icon": "bell",
+      "file": "assets/notification-images/v3/artgian-crm-teste-de-notificacao.jpg",
+      "svg": "assets/notification-images/v3/artgian-crm-teste-de-notificacao.svg",
+      "byteSize": 29733,
+      "sha256": "5fbb9dae3ab9d016e1cbe67cf32b237b2f751443909248c61f419020398d3b6a"
+    }
+  },
+  "recipes": [
+    {
+      "key": "crm-shopee-novo-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Novo Pedido",
+      "eventType": "CRM_ORDER_IMPORTED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-novo-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pagamento-confirmado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pagamento Confirmado",
+      "eventType": "CRM_ORDER_PAID",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pagamento-confirmado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pagamento-recusado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pagamento Recusado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "rejected"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pagamento-recusado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pedido-cancelado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pedido Cancelado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "cancelled"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pedido-cancelado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pedido-reembolsado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pedido Reembolsado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "refunded"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pedido-reembolsado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pagamento-em-contestacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pagamento em Contestação",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "charged_back"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pagamento-em-contestacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pedido-enviado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pedido Enviado",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "shipped"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pedido-enviado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pedido-saiu-para-entrega",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pedido Saiu para Entrega",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "out_for_delivery"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pedido-saiu-para-entrega",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-pedido-entregue",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Pedido Entregue",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "delivered"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-pedido-entregue",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-revise-os-custos-do-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Revise os Custos do Pedido",
+      "eventType": "CRM_ORDER_COSTS_OUTDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-revise-os-custos-do-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-reconexao-necessaria",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Reconexão Necessária",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.code",
+          "operator": "EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "shopee-reconexao-necessaria",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-falha-na-sincronizacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Falha na Sincronização",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        },
+        {
+          "field": "data.code",
+          "operator": "NOT_EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "shopee-falha-na-sincronizacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-shopee-sincronizacao-normalizada",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Shopee - Sincronização Normalizada",
+      "eventType": "CRM_SYNC_RECOVERED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Shopee"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "shopee-sincronizacao-normalizada",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-novo-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Novo Pedido",
+      "eventType": "CRM_ORDER_IMPORTED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-novo-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pagamento-confirmado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pagamento Confirmado",
+      "eventType": "CRM_ORDER_PAID",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pagamento-confirmado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pagamento-recusado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pagamento Recusado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "rejected"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pagamento-recusado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pedido-cancelado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pedido Cancelado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "cancelled"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pedido-cancelado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pedido-reembolsado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pedido Reembolsado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "refunded"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pedido-reembolsado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pagamento-em-contestacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pagamento em Contestação",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "charged_back"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pagamento-em-contestacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pedido-enviado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pedido Enviado",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "shipped"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pedido-enviado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pedido-saiu-para-entrega",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pedido Saiu para Entrega",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "out_for_delivery"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pedido-saiu-para-entrega",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-pedido-entregue",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Pedido Entregue",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "delivered"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-pedido-entregue",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-revise-os-custos-do-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Revise os Custos do Pedido",
+      "eventType": "CRM_ORDER_COSTS_OUTDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-revise-os-custos-do-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-reconexao-necessaria",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Reconexão Necessária",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.code",
+          "operator": "EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "mercado-livre-reconexao-necessaria",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-falha-na-sincronizacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Falha na Sincronização",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        },
+        {
+          "field": "data.code",
+          "operator": "NOT_EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "mercado-livre-falha-na-sincronizacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-mercado-livre-sincronizacao-normalizada",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Mercado Livre - Sincronização Normalizada",
+      "eventType": "CRM_SYNC_RECOVERED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Mercado Livre"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "mercado-livre-sincronizacao-normalizada",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-novo-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Novo Pedido",
+      "eventType": "CRM_ORDER_IMPORTED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-novo-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pagamento-confirmado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pagamento Confirmado",
+      "eventType": "CRM_ORDER_PAID",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pagamento-confirmado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pagamento-recusado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pagamento Recusado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "rejected"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pagamento-recusado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pedido-cancelado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pedido Cancelado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "cancelled"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-cancelado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pedido-reembolsado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pedido Reembolsado",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "refunded"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-reembolsado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pagamento-em-contestacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pagamento em Contestação",
+      "eventType": "CRM_ORDER_PAYMENT_ISSUE",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.paymentStatus",
+          "operator": "EQUALS",
+          "value": "charged_back"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pagamento-em-contestacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pedido-enviado",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pedido Enviado",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "shipped"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-enviado",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pedido-saiu-para-entrega",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pedido Saiu para Entrega",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "out_for_delivery"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-saiu-para-entrega",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-pedido-entregue",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Pedido Entregue",
+      "eventType": "CRM_ORDER_FULFILLMENT_UPDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.fulfillmentStatus",
+          "operator": "EQUALS",
+          "value": "delivered"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-entregue",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-revise-os-custos-do-pedido",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Revise os Custos do Pedido",
+      "eventType": "CRM_ORDER_COSTS_OUTDATED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-revise-os-custos-do-pedido",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-reconexao-necessaria",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Reconexão Necessária",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.code",
+          "operator": "EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "artgian-site-reconexao-necessaria",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-falha-na-sincronizacao",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Falha na Sincronização",
+      "eventType": "CRM_SYNC_FAILED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        },
+        {
+          "field": "data.code",
+          "operator": "NOT_EQUALS",
+          "value": "reauth_required"
+        }
+      ],
+      "priority": "HIGH",
+      "artwork": "artgian-site-falha-na-sincronizacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-artgian-site-sincronizacao-normalizada",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian Site - Sincronização Normalizada",
+      "eventType": "CRM_SYNC_RECOVERED",
+      "conditions": [
+        {
+          "field": "data.channel",
+          "operator": "EQUALS",
+          "value": "Artgian Studio"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-sincronizacao-normalizada",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "crm-test",
+      "applicationCode": "ARTGIAN_CRM",
+      "name": "Artgian CRM - Teste de Notificação",
+      "eventType": "CRM_NOTIFY_TEST",
+      "conditions": [],
+      "priority": "NORMAL",
+      "artwork": "artgian-crm-teste-de-notificacao",
+      "templateBody": "*{{title}}*\n{{message}}\n{{url}}",
+      "templateVariables": [
+        "title",
+        "message",
+        "url"
+      ],
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "studio-new-order",
+      "applicationCode": "ARTGIAN",
+      "name": "Artgian Site - Novo Pedido",
+      "eventType": "ORDER_PAID",
+      "conditions": [],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-novo-pedido",
+      "templateTitle": "Artgian Site - Novo Pedido",
+      "templateBodyPolicy": "Replace the existing title only; preserve the existing remaining body and variables.",
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "studio-posted",
+      "applicationCode": "ARTGIAN",
+      "name": "Artgian Site - Pedido Enviado",
+      "eventType": "TRACKING_POSTED",
+      "conditions": [],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-enviado",
+      "templateTitle": "Artgian Site - Pedido Enviado",
+      "templateBodyPolicy": "Replace the existing title only; preserve the existing remaining body and variables.",
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "studio-out-for-delivery",
+      "applicationCode": "ARTGIAN",
+      "name": "Artgian Site - Pedido Saiu para Entrega",
+      "eventType": "TRACKING_STATUS_CHANGED",
+      "conditions": [
+        {
+          "field": "data.status",
+          "operator": "EQUALS",
+          "value": "OUT_FOR_DELIVERY"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-saiu-para-entrega",
+      "templateTitle": "Artgian Site - Pedido Saiu para Entrega",
+      "templateBodyPolicy": "Replace the existing title only; preserve the existing remaining body and variables.",
+      "targetPolicy": "operations-contact"
+    },
+    {
+      "key": "studio-delivered",
+      "applicationCode": "ARTGIAN",
+      "name": "Artgian Site - Pedido Entregue",
+      "eventType": "TRACKING_STATUS_CHANGED",
+      "conditions": [
+        {
+          "field": "data.status",
+          "operator": "EQUALS",
+          "value": "DELIVERED"
+        }
+      ],
+      "priority": "NORMAL",
+      "artwork": "artgian-site-pedido-entregue",
+      "templateTitle": "Artgian Site - Pedido Entregue",
+      "templateBodyPolicy": "Replace the existing title only; preserve the existing remaining body and variables.",
+      "targetPolicy": "operations-contact"
+    }
+  ],
+  "activationNotes": [
+    "Keep only ARTGIAN_CRM and ARTGIAN (display names Artgian CRM and Artgian Studio).",
+    "Existing broad CRM_* and overlapping Studio rules must be removed or disabled before exact rules are activated; every matching rule sends independently.",
+    "Resolve all targets to the authorized test contact before testing and to the authorized final contact afterward. Do not retain EVENT_RECIPIENT routing for this internal notification rollout.",
+    "Keep the same channel and approved Evolution template body; upload each artwork once and set template.spec.imageId.",
+    "For Meta, an image header still requires provider approval; this inventory grants no approval.",
+    "Application imageId remains a generic fallback only. Exact templates override it and retries retain the chosen image ID."
+  ]
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=One-time Notify cleanup after midnight in Sao Paulo
+
+[Timer]
+OnCalendar=2026-10-21 03:05:00 UTC
+AccuracySec=1s
+Persistent=true
+Unit=notify-history-cutover-20261021.service
+
+[Install]
+WantedBy=timers.target

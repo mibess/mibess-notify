@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320">
+<rect x="0" y="0" width="960" height="320" rx="0" fill="#FFF0EA"/>
+<rect x="18" y="18" width="924" height="284" rx="20" fill="#FFFFFF"/>
+<rect x="769" y="38" width="153" height="244" rx="14" fill="#FFF0EA"/>
+<rect x="41" y="43" width="8" height="31" rx="4" fill="#EE4D2D"/>
+<text x="64" y="68" fill="#8F2817" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700">Shopee</text>
+<text x="42" y="190" fill="#182B3D" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">Pedido Entregue</text>
+<rect x="42" y="264" width="65" height="6" rx="3" fill="#EE4D2D"/>
+<circle cx="845" cy="164" r="42" fill="none" stroke="#8F2817" stroke-width="5"/>
+<polyline points="823,164 839,181 870,146" fill="none" stroke="#8F2817" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
