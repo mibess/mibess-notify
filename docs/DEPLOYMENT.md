@@ -2,6 +2,8 @@
 
 ## Estado
 
+Em 16/11/2026, as notificações ao comprador por WhatsApp e e-mail foram publicadas em HML e PRD. O Notify executa `851dca8773912221e8b1e61273ae5c1f70a2166d`, com a migração V6 e os canais Artgian ativos. O teste real teve WhatsApp entregue e e-mail recebido, conforme o registro de publicação ao final desta página. As notificações internas foram preservadas.
+
 Em 20/10/2026, a configuração de produção foi simplificada para **Artgian Studio e Artgian CRM**, com 44 regras e 40 imagens por origem/evento. Histórico até a limpeza zerado, nove testes reais entregues e destinatário definitivo configurado. O CRM publicou `be48df2f90186987ed3d2621b6b236aaf89fd6f5`. O Notify mantém o runtime saudável `f1bac5f856944d4fed54e3a40cd9b02cef2365a1`: os novos títulos, regras e imagens usam capacidades já publicadas. HML não foi modificado. Veja [registro da limpeza e aceite](PRODUCTION_RESET_20261020.md) e [imagens](IMAGES.md).
 
 O provisionamento inicial e o acesso de deploy foram aprovados explicitamente pelo proprietário e executados em 24/09/2026 (UTC). Evidências desse marco:
@@ -115,3 +117,24 @@ O aceite fake em `infrastructure/smoke.py` verifica agora diagnóstico NO_MATCH,
 - Quatro imagens JPEG geradas e associadas às aplicações, quatro eventos autorizados para o contato de teste, uma tentativa cada. IDs e resultados estão em [IMAGES.md](IMAGES.md). Regras de negócio preservadas; fixtures de teste desativadas e chaves temporárias revogadas.
 - Apenas os quatro containers frontend/backend Notify foram substituídos; os dez demais serviços mantiveram os mesmos IDs, incluindo PostgreSQL, Evolution, Redis, RabbitMQ, proxy e serviço de segredos. Health HTTPS UP em ambos os ambientes.
 - Rollback mantém schema V5. Uma versão antiga deixa de enviar imagens; não reverter migrations nem apagar arquivos/histórico.
+
+
+### Notificações ao comprador — 16/11/2026
+
+- Notify `851dca8773912221e8b1e61273ae5c1f70a2166d` publicado com sucesso: [HML — execução 43996978077](https://github.com/mibess/mibess-notify/actions/runs/43996978077) e [PRD — execução 43997819300](https://github.com/mibess/mibess-notify/actions/runs/43997819300). Validação: 57 testes backend e 29 frontend; aceite fake completo em HML aprovado antes da promoção.
+- A migração `V6__email_contact_lookup.sql` adiciona somente o índice de consulta de contatos por e-mail. O envio reutiliza a outbox, filas, worker, tentativas e histórico existentes, com regras e resultados independentes por canal. Contrato em [API.md](API.md).
+- Canal WhatsApp `ARTGIAN_CUSTOMERS` conectado ao remetente **+5516997432741**. A conexão foi concluída pelo QR atualizado, sem alterar a versão da Evolution nem a sessão `MIBESS_NOTIFY` existente.
+- Canal SMTP `ARTGIAN_EMAIL` configurado no Zoho, com remetente **contato@artgian.com.br**, reutilizando a credencial existente e mantendo-a criptografada no Notify. Nenhuma credencial foi incluída no repositório ou neste registro.
+- Quatro regras de comprador estão ativas na aplicação `ARTGIAN`: compra paga e atualizações de status, cada uma com regra WhatsApp e regra e-mail, todas com `targetType=EVENT_RECIPIENT`. As regras internas permaneceram preservadas.
+- Artgian Studio `9e67ad2` publicado em produção no deployment `dpl_GdhVSfayP11sUVSazaZ2eZEv8tz4`, estado READY, com a flag de notificações ao comprador habilitada.
+
+Foi publicado **um único evento de teste isolado**, `50eab02c-dae6-4108-934b-7e38fb3aeeef`, sem criar pedido ou cobrança:
+
+| Canal | Notificação | Destino autorizado | Resultado |
+|---|---|---|---|
+| WhatsApp | `9bd057c6-ee3b-4e58-ae22-0b770290a546` | +5516997200212 | **DELIVERED**, às 22:48:02 de 16/11/2026, horário de Brasília; uma tentativa |
+| E-mail | `8cb3e9a1-8ade-43b4-8070-904c5df6effc` | c.silverio@live.com | **SENT** pelo SMTP, uma tentativa; o usuário confirmou recebimento na caixa de entrada |
+
+A confirmação humana do e-mail complementa o status SMTP `SENT`; não foi registrada como confirmação automática `DELIVERED`. Após o aceite, a aplicação e as regras temporárias foram desativadas, a chave temporária foi revogada e o histórico foi preservado.
+
+Rollback mantém a V6 aplicada. Embora o índice seja compatível com o schema anterior, workers anteriores ao suporte SMTP não compreendem os canais e comandos de e-mail: reconciliar mensagens em processamento e pendentes antes de qualquer retorno a uma imagem anterior; preservar eventos, tentativas e histórico.
