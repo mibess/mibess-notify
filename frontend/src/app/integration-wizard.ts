@@ -147,6 +147,7 @@ export class IntegrationWizard implements OnInit, OnDestroy {
   contactName = "";
   contactCode = "";
   contactPhone = "";
+  contactEmail = "";
   consent = false;
   consentSource = "";
   consentAt = "";
@@ -154,6 +155,8 @@ export class IntegrationWizard implements OnInit, OnDestroy {
   groupCode = "";
   templateName = "";
   templateCode = "";
+  templateSubject = "";
+  templateHtml = "";
   templateBody = "*{{title}}*\n{{message}}\n{{url}}";
   templateVariables = "title, message, url";
   templateApproved = false;
@@ -189,6 +192,31 @@ export class IntegrationWizard implements OnInit, OnDestroy {
   get channel() {
     return this.resources()["channels"]?.find(
       (c) => c.id === this.draft.channelId,
+    );
+  }
+  get emailChannel() {
+    return this.channel?.spec["provider"] === "EMAIL_SMTP";
+  }
+  get emailDelivery() {
+    const channel = this.delivery()?.notification?.channel;
+    return channel ? channel === "EMAIL" : this.emailChannel;
+  }
+  contactAddress(contact: Resource) {
+    return this.emailChannel
+      ? contact.spec["email"] || "E-mail não cadastrado"
+      : this.channel
+        ? contact.spec["phone"] || "Telefone não cadastrado"
+        : [contact.spec["phone"], contact.spec["email"]]
+            .filter(Boolean)
+            .join(" · ");
+  }
+  whatsappEligible(contact: Resource) {
+    return !!(
+      contact.spec["phone"] &&
+      contact.spec["whatsappOptIn"] &&
+      contact.spec["whatsappOptInAt"] &&
+      contact.spec["whatsappOptInSource"] &&
+      !contact.spec["whatsappOptOutAt"]
     );
   }
   get templates() {
@@ -392,22 +420,37 @@ export class IntegrationWizard implements OnInit, OnDestroy {
   }
   createContact() {
     void this.run(async () => {
-      if (!/^\+[1-9]\d{7,14}$/.test(this.contactPhone))
+      if (this.contactPhone && !/^\+[1-9]\d{7,14}$/.test(this.contactPhone))
         throw new Error("Use um telefone E.164, como +5516999999999.");
-      if (!this.consent || !this.consentSource.trim() || !this.consentAt)
+      if (
+        this.contactEmail &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.contactEmail)
+      )
+        throw new Error("Informe um e-mail válido.");
+      if (!this.contactPhone && !this.contactEmail)
+        throw new Error("Preencha um telefone ou e-mail.");
+      if (
+        (!this.contactEmail || this.consent) &&
+        (!this.consent || !this.consentSource.trim() || !this.consentAt)
+      )
         throw new Error(
-          "Registre somente consentimento já autorizado, com origem e data da evidência.",
+          "WhatsApp exige consentimento autorizado, com origem e data da evidência.",
         );
       const contact = await this.create(
         "contacts",
         this.contactCode,
         this.contactName,
         {
-          phone: this.contactPhone,
+          ...(this.contactPhone ? { phone: this.contactPhone } : {}),
+          ...(this.contactEmail ? { email: this.contactEmail } : {}),
           type: "INTERNAL",
-          whatsappOptIn: true,
-          whatsappOptInSource: this.consentSource,
-          whatsappOptInAt: new Date(this.consentAt).toISOString(),
+          whatsappOptIn: this.consent,
+          ...(this.consent
+            ? {
+                whatsappOptInSource: this.consentSource,
+                whatsappOptInAt: new Date(this.consentAt).toISOString(),
+              }
+            : {}),
         },
       );
       this.draft.contactIds.push(contact.id);
@@ -415,6 +458,7 @@ export class IntegrationWizard implements OnInit, OnDestroy {
       this.contactName =
         this.contactCode =
         this.contactPhone =
+        this.contactEmail =
         this.consentSource =
         this.consentAt =
           "";
@@ -452,13 +496,22 @@ export class IntegrationWizard implements OnInit, OnDestroy {
         );
       if (!this.templateBody.trim())
         throw new Error("Preencha o corpo da mensagem.");
+      if (this.emailChannel && !this.templateSubject.trim())
+        throw new Error("Preencha o assunto do e-mail.");
       const template = await this.create(
         "templates",
         this.templateCode,
         this.templateName,
         {
           channelConnectionId: this.draft.channelId,
-          providerTemplateName: this.templateCode,
+          ...(this.emailChannel
+            ? {
+                subject: this.templateSubject,
+                ...(this.templateHtml.trim()
+                  ? { html: this.templateHtml }
+                  : {}),
+              }
+            : { providerTemplateName: this.templateCode }),
           language: "pt_BR",
           category: "UTILITY",
           status: "APPROVED",
@@ -516,14 +569,11 @@ export class IntegrationWizard implements OnInit, OnDestroy {
             (c) =>
               c.id === id &&
               c.enabled &&
-              c.spec["whatsappOptIn"] &&
-              c.spec["whatsappOptInAt"] &&
-              c.spec["whatsappOptInSource"] &&
-              !c.spec["whatsappOptOutAt"],
+              (!!c.spec["email"] || this.whatsappEligible(c)),
           ),
         )
       )
-        return "Selecione um grupo ativo com pelo menos um contato ativo e consentimento válido.";
+        return "Selecione um grupo ativo com contato apto a receber e-mail ou WhatsApp com consentimento válido.";
     }
     if (
       d.step === 3 &&
@@ -532,6 +582,24 @@ export class IntegrationWizard implements OnInit, OnDestroy {
           this.channel.spec["provider"] !== "FAKE"))
     )
       return "Selecione um canal ativo com credenciais configuradas.";
+    if (d.step === 3) {
+      const group = this.resources()["groups"]?.find((g) => g.id === d.groupId);
+      if (
+        !(group?.spec["members"] || []).some((id: string) =>
+          this.resources()["contacts"]?.some(
+            (c) =>
+              c.id === id &&
+              c.enabled &&
+              (this.emailChannel
+                ? !!c.spec["email"]
+                : this.whatsappEligible(c)),
+          ),
+        )
+      )
+        return this.emailChannel
+          ? "O grupo precisa de um contato ativo com e-mail."
+          : "O grupo precisa de um contato ativo com telefone e consentimento para WhatsApp.";
+    }
     if (d.step === 4 && this.selectedTemplate?.spec["status"] !== "APPROVED")
       return "Escolha ou crie um template ativo e aprovado para o canal.";
     if (d.step === 5 && !d.eventTypes.length)
@@ -566,7 +634,15 @@ export class IntegrationWizard implements OnInit, OnDestroy {
         const configuredPriorities = this.priorityOverrides.trim()
           ? JSON.parse(this.priorityOverrides)
           : {};
-        const eventPriorities = Object.fromEntries(Object.entries(configuredPriorities).filter(([type]) => this.draft.eventTypes.some((pattern) => pattern.endsWith("*") ? type.startsWith(pattern.slice(0, -1)) : type === pattern)));
+        const eventPriorities = Object.fromEntries(
+          Object.entries(configuredPriorities).filter(([type]) =>
+            this.draft.eventTypes.some((pattern) =>
+              pattern.endsWith("*")
+                ? type.startsWith(pattern.slice(0, -1))
+                : type === pattern,
+            ),
+          ),
+        );
         const spec = {
           applicationId: this.draft.applicationId,
           eventTypes: this.draft.eventTypes,
@@ -742,7 +818,8 @@ export class IntegrationWizard implements OnInit, OnDestroy {
       if (
         !["DELIVERED", "READ", "FAILED", "CANCELLED"].includes(
           detail.notification?.status,
-        )
+        ) &&
+        !(this.emailDelivery && detail.notification?.status === "SENT")
       )
         this.timer = setTimeout(() => void this.refreshDelivery(), 3000);
     } catch (e) {

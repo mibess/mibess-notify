@@ -153,6 +153,12 @@ public class QueryController {
       json.read(n.get("command").toString()).path("imageId").asText(),
       "message",
       json.read(n.get("command").toString()).path("text").asText(),
+      "subject",
+      json.read(n.get("command").toString()).path("subject").asText(),
+      "html",
+      json.read(n.get("command").toString()).path("html").asText(),
+      "fromAddress",
+      json.read(n.get("command").toString()).path("fromAddress").asText(),
       "timeline",
       db
         .sql(

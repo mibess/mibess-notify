@@ -95,7 +95,8 @@
     } @case(2){
     <p>
       Selecione um grupo existente ou crie um grupo para esta integração. O
-      consentimento deve ter autorização e evidência reais.
+      consentimento para WhatsApp deve ter autorização e evidência reais.
+      E-mails transacionais usam o endereço do contato.
     </p>
     <label
       >Grupo de destinatários<select
@@ -119,7 +120,7 @@
             type="checkbox"
             [checked]="draft.contactIds.includes(contact.id)"
             (change)="toggleContact(contact.id)"
-          />{{contact.name}} · {{contact.spec.phone}}</label
+          />{{contact.name}} · {{contactAddress(contact)}}</label
         >}}@empty{
         <p>Crie um contato abaixo para começar.</p>
         }
@@ -137,7 +138,7 @@
       </button>
     </details>
     <details>
-      <summary>Criar contato com consentimento</summary>
+      <summary>Criar contato</summary>
       <div class="form-grid">
         <label>Nome<input [(ngModel)]="contactName" /></label
         ><label>Código<input [(ngModel)]="contactCode" /></label>
@@ -148,9 +149,15 @@
           [(ngModel)]="contactPhone"
           placeholder="+5516999999999"
       /></label>
+      <label
+        >E-mail<input
+          type="email"
+          [(ngModel)]="contactEmail"
+          placeholder="cliente@exemplo.com"
+      /></label>
       <label class="checkbox-label"
         ><input type="checkbox" [(ngModel)]="consent" />O contato autorizou
-        receber estas mensagens.</label
+        receber mensagens no WhatsApp.</label
       >
       <label
         >Origem da evidência<input
@@ -162,12 +169,10 @@
           type="datetime-local"
           [(ngModel)]="consentAt"
       /></label>
-      <button class="btn" (click)="createContact()">
-        Cadastrar contato autorizado
-      </button>
+      <button class="btn" (click)="createContact()">Cadastrar contato</button>
     </details>
     } @case(3){
-    <p>Escolha o remetente WhatsApp que enviará as mensagens.</p>
+    <p>Escolha o remetente de WhatsApp ou e-mail que enviará as mensagens.</p>
     <label
       >Canal<select
         [(ngModel)]="draft.channelId"
@@ -219,12 +224,23 @@
             placeholder="crm_aviso"
         /></label>
       </div>
+      @if(emailChannel){<label
+        >Assunto do e-mail<input
+          [(ngModel)]="templateSubject"
+          maxlength="200" /></label
+      >}
       <label
-        >Corpo da mensagem<textarea
+        >Corpo da mensagem em texto<textarea
           [(ngModel)]="templateBody"
           rows="5"
         ></textarea>
       </label>
+      @if(emailChannel){<label
+        >HTML do e-mail (opcional)<textarea
+          [(ngModel)]="templateHtml"
+          rows="5"
+        ></textarea></label
+      >}
       <label
         >Variáveis, separadas por vírgula<input
           [(ngModel)]="templateVariables"
@@ -242,7 +258,7 @@
           [(ngModel)]="templateApproved"
         />{{channel?.spec?.['provider']==='WHATSAPP_META'?'Este nome, idioma e
         conteúdo já estão aprovados na Meta.':'Revisei o conteúdo e autorizo a
-        aprovação local na Evolution.'}}</label
+        aprovação local.'}}</label
       >
       <button class="btn" (click)="createTemplate()">
         Criar template aprovado
@@ -356,7 +372,16 @@
       {{simulation().recipients?.length||0}} destinatário(s) resolvido(s). O
       teste abaixo será enviado somente ao contato escolhido.
     </p>
+    @if(simulation().renderedSubject){
+    <p><strong>Assunto:</strong> {{simulation().renderedSubject}}</p>
+    }
     <pre class="message-preview">{{simulation().renderedMessage}}</pre>
+    @if(simulation().renderedHtml){
+    <details>
+      <summary>Conferir versão HTML</summary>
+      <pre class="message-preview">{{simulation().renderedHtml}}</pre>
+    </details>
+    }
     <label
       >Contato para este teste<select
         [(ngModel)]="draft.testContactId"
@@ -366,7 +391,7 @@
         @for(contact of resources()['contacts']||[];track
         contact.id){@if(contact.enabled){
         <option [value]="contact.id">
-          {{contact.name}} · {{contact.spec.phone}}
+          {{contact.name}} · {{contactAddress(contact)}}
         </option>
         }}
       </select></label
@@ -384,7 +409,10 @@
         >Confirmar envio para {{preview().recipientName}} ·
         {{preview().recipientAddress}}</strong
       >
-      <p>Remetente: {{preview().channelName}}</p>
+      <p>Remetente: {{preview().channelName}} {{preview().fromAddress}}</p>
+      @if(preview().subject){
+      <p><strong>Assunto:</strong> {{preview().subject}}</p>
+      }
       <pre class="message-preview">{{preview().text}}</pre>
       <button class="btn primary" (click)="confirmTest()">
         {{draft.attempted?'Verificar o mesmo envio':'Confirmar e enviar este
@@ -399,10 +427,15 @@
     <button class="btn" (click)="recoverSend()">Verificar envio</button>}
     @if(delivery()){
     <div aria-live="polite">
-      <h3>Status: {{delivery().notification.status}}</h3>
+      <h3>
+        Status: {{emailDelivery&&delivery().notification.status==='SENT'?'Aceita
+        pelo SMTP':delivery().notification.status}}
+      </h3>
       <p>
-        Atualização automática até a confirmação de entrega. SENT significa
-        aceitação pelo remetente; DELIVERED confirma entrega.
+        @if(emailDelivery){SENT confirma aceitação pelo servidor SMTP. Não
+        confirma chegada à caixa de entrada nem leitura.} @else{Atualização
+        automática até a confirmação de entrega. SENT significa aceitação pelo
+        remetente; DELIVERED confirma entrega.}
       </p>
       @if(delivery().notification.error_code){
       <p class="error">{{deliveryError(delivery().notification.error_code)}}</p>

@@ -2,6 +2,7 @@ package com.mibess.notify.routing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mibess.notify.audit.AuditLog;
+import com.mibess.notify.channel.DeliveryAddress;
 import com.mibess.notify.channel.ProviderRegistry;
 import com.mibess.notify.contact.ConsentService;
 import com.mibess.notify.shared.*;
@@ -328,11 +329,15 @@ public class IntegrationController {
         template.id()
       )
     );
+    String deliveryChannel = DeliveryAddress.channel(channel);
+    boolean email = deliveryChannel.equals("EMAIL");
     var resolved = routing.resolve(workspace, spec, example);
     if (resolved.isEmpty()) problems.add(
       new Problem(
         "NO_ACTIVE_RECIPIENTS",
-        "Nenhum destinatário ativo; verifique grupo, contato ou recipient.phone do exemplo",
+        "Nenhum destinatário ativo; verifique grupo, contato ou recipient." +
+          (email ? "email" : "phone") +
+          " do exemplo",
         targetKind(spec),
         targetId(spec)
       )
@@ -340,12 +345,12 @@ public class IntegrationController {
     List<TestRecipient> recipients = new ArrayList<>();
     for (var r : resolved) {
       List<String> errors = new ArrayList<>();
-      if (!ConsentService.validOptIn(r.consent())) errors.add(
+      if (!DeliveryAddress.permitted(r.consent(), deliveryChannel)) errors.add(
         "CONSENT_REQUIRED"
       );
-      if (consent.suppressed(workspace, r.address())) errors.add(
-        "RECIPIENT_SUPPRESSED"
-      );
+      if (
+        consent.suppressed(workspace, r.address(), deliveryChannel)
+      ) errors.add("RECIPIENT_SUPPRESSED");
       recipients.add(
         new TestRecipient(r.contactId(), r.name(), r.address(), errors)
       );
@@ -361,7 +366,9 @@ public class IntegrationController {
           )
         );
     }
-    String message = "";
+    String message = "",
+      subject = "",
+      html = "";
     Map<String, String> variables = new LinkedHashMap<>();
     try {
       var values = TemplateRenderer.parameters(template.spec(), example);
@@ -369,10 +376,34 @@ public class IntegrationController {
       for (var variable : template.spec().path("variables"))
         variables.put(variable.asText(), values.get(index++));
       message = TemplateRenderer.render(template.spec(), example);
-      if (message.isBlank() || message.length() > 4096) problems.add(
+      if (email) {
+        subject = DeliveryAddress.header(
+          TemplateRenderer.renderField(
+            template.spec(),
+            example,
+            "subject",
+            false
+          ),
+          "subject",
+          200
+        );
+        html = TemplateRenderer.renderField(
+          template.spec(),
+          example,
+          "html",
+          true
+        );
+      }
+      if (
+        message.isBlank() ||
+        message.length() > (email ? 20000 : 4096) ||
+        html.length() > 50000
+      ) problems.add(
         new Problem(
           "INVALID_MESSAGE",
-          "Mensagem deve ter entre 1 e 4096 caracteres",
+          email
+            ? "Texto deve ter até 20000 caracteres e HTML até 50000"
+            : "Mensagem deve ter entre 1 e 4096 caracteres",
           "templates",
           template.id()
         )
@@ -395,6 +426,9 @@ public class IntegrationController {
     result.put("recipient", example.path("recipient"));
     result.put("recipients", recipients);
     result.put("renderedMessage", message);
+    result.put("renderedSubject", subject);
+    result.put("renderedHtml", html);
+    result.put("channel", deliveryChannel);
     result.put("problems", problems);
     result.put("channelConnectionId", channel.id());
     result.put("templateId", template.id());
@@ -560,6 +594,7 @@ public class IntegrationController {
         null
       )
     );
+    Map<UUID, Set<String>> contactChannels = new HashMap<>();
     Set<UUID> groups = new HashSet<>(),
       contacts = new HashSet<>(),
       templates = new HashSet<>(),
@@ -567,6 +602,27 @@ public class IntegrationController {
     for (var rule : rules) {
       if (!rule.enabled()) continue;
       var spec = rule.spec();
+      String deliveryChannel = DeliveryAddress.channel(
+        store.get(
+          Kind.CHANNELS,
+          workspace,
+          UUID.fromString(spec.path("channelConnectionId").asText())
+        )
+      );
+      if (spec.path("targetType").asText().equals("CONTACT")) contactChannels
+        .computeIfAbsent(targetId(spec), k -> new HashSet<>())
+        .add(deliveryChannel);
+      if (spec.path("targetType").asText().equals("CONTACT_GROUP")) {
+        for (var member : store
+          .get(Kind.GROUPS, workspace, targetId(spec))
+          .spec()
+          .path("members"))
+          contactChannels
+            .computeIfAbsent(UUID.fromString(member.asText()), k ->
+              new HashSet<>()
+            )
+            .add(deliveryChannel);
+      }
       if (spec.path("targetType").asText().equals("CONTACT_GROUP")) groups.add(
         targetId(spec)
       );
@@ -599,10 +655,23 @@ public class IntegrationController {
     }
     for (UUID contactId : contacts) {
       var contact = store.get(Kind.CONTACTS, workspace, contactId);
-      boolean ready =
-        contact.enabled() &&
-        ConsentService.validOptIn(contact.spec()) &&
-        !consent.suppressed(workspace, contact.spec().path("phone").asText());
+      boolean ready = contact.enabled();
+      for (String deliveryChannel : contactChannels.getOrDefault(
+        contactId,
+        Set.of("WHATSAPP")
+      )) {
+        try {
+          ready &=
+            DeliveryAddress.permitted(contact.spec(), deliveryChannel) &&
+            !consent.suppressed(
+              workspace,
+              DeliveryAddress.address(contact.spec(), deliveryChannel),
+              deliveryChannel
+            );
+        } catch (IllegalArgumentException e) {
+          ready = false;
+        }
+      }
       if (!ready) checks.add(
         check(
           "CONTACT_NOT_READY",

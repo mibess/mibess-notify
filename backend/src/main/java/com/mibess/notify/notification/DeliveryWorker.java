@@ -3,6 +3,7 @@ package com.mibess.notify.notification;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mibess.notify.channel.*;
 import com.mibess.notify.channel.ChannelProvider.*;
+import com.mibess.notify.channel.DeliveryAddress;
 import com.mibess.notify.contact.ConsentService;
 import com.mibess.notify.shared.*;
 import com.mibess.notify.shared.ResourceStore.*;
@@ -118,8 +119,11 @@ public class DeliveryWorker {
         (UUID) n.get("channel_connection_id")
       );
       JsonNode optIn = cmd.path("consent");
+      String deliveryChannel = n.get("channel").toString();
       boolean manual = "MANUAL".equals(n.get("source"));
-      boolean enabled = channel.enabled();
+      boolean enabled =
+        channel.enabled() &&
+        deliveryChannel.equals(DeliveryAddress.channel(channel));
       if (manual) {
         enabled &=
           cmd
@@ -162,21 +166,32 @@ public class DeliveryWorker {
             .enabled() &&
           store.get(Kind.RULES, w, (UUID) n.get("rule_id")).enabled();
       }
+      boolean eventDeclined =
+        deliveryChannel.equals("WHATSAPP") &&
+        optIn.path("whatsappOptIn").isBoolean() &&
+        !optIn.path("whatsappOptIn").asBoolean();
       if (n.get("contact_id") != null) {
         var contact = store.get(Kind.CONTACTS, w, (UUID) n.get("contact_id"));
         optIn = contact.spec();
-        enabled &=
-          contact.enabled() &&
-          contact
-            .spec()
-            .path("phone")
-            .asText()
-            .equals(n.get("recipient_address"));
+        try {
+          enabled &=
+            contact.enabled() &&
+            DeliveryAddress.address(contact.spec(), deliveryChannel).equals(
+              n.get("recipient_address")
+            );
+        } catch (IllegalArgumentException e) {
+          enabled = false;
+        }
       }
       if (
         !enabled ||
-        !ConsentService.validOptIn(optIn) ||
-        consent.suppressed(w, n.get("recipient_address").toString())
+        eventDeclined ||
+        !DeliveryAddress.permitted(optIn, deliveryChannel) ||
+        consent.suppressed(
+          w,
+          n.get("recipient_address").toString(),
+          deliveryChannel
+        )
       ) {
         db.sql(
           "UPDATE notifications SET status='CANCELLED',error_code='CONSENT_OR_CONFIGURATION_CHANGED' WHERE id=:id"
@@ -222,7 +237,9 @@ public class DeliveryWorker {
           .send(
             new SendCommand(
               row.get("recipient_address").toString(),
-              images.forDelivery((UUID) row.get("workspace_id"), command),
+              row.get("channel").equals("EMAIL")
+                ? command
+                : images.forDelivery((UUID) row.get("workspace_id"), command),
               connection
             )
           );
@@ -243,7 +260,9 @@ public class DeliveryWorker {
           timeline(
             id,
             "SENT",
-            "Provider aceitou a mensagem; aguardando entrega"
+            row.get("channel").equals("EMAIL")
+              ? "Servidor SMTP aceitou o e-mail; entrega não confirmada"
+              : "Provider aceitou a mensagem; aguardando entrega"
           );
         });
         LOG.info("notification_sent notificationId={}", id);

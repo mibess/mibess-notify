@@ -106,6 +106,17 @@ public class ResourceStore {
       );
   }
 
+  public Optional<Resource> contactByEmail(UUID workspace, String email) {
+    return db
+      .sql(
+        "SELECT * FROM contacts WHERE workspace_id=:w AND spec->>'email' IS NOT NULL AND lower(spec->>'email')=:email ORDER BY created_at LIMIT 1"
+      )
+      .param("w", workspace)
+      .param("email", email)
+      .query(this::row)
+      .optional();
+  }
+
   public Optional<Resource> contactByPhone(UUID workspace, String phone) {
     return db
       .sql(

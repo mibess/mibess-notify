@@ -1,6 +1,7 @@
 package com.mibess.notify.routing;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mibess.notify.channel.DeliveryAddress;
 import com.mibess.notify.contact.ConsentService;
 import com.mibess.notify.shared.*;
 import com.mibess.notify.shared.ResourceStore.*;
@@ -111,11 +112,15 @@ public class RoutingEngine {
         workspace,
         UUID.fromString(s.path("templateId").asText())
       );
+      String deliveryChannel = DeliveryAddress.channel(channel);
+      boolean email = deliveryChannel.equals("EMAIL");
       for (Recipient recipient : recipients) {
         String state = "PENDING",
           error = null;
         List<String> parameters = List.of();
-        String text = "";
+        String text = "",
+          subject = "",
+          html = "";
         if (!channel.enabled() || !template.enabled()) {
           state = "CANCELLED";
           error = "CONFIGURATION_DISABLED";
@@ -125,8 +130,8 @@ public class RoutingEngine {
           state = "FAILED";
           error = "TEMPLATE_NOT_APPROVED";
         } else if (
-          !ConsentService.validOptIn(recipient.consent()) ||
-          consent.suppressed(workspace, recipient.address())
+          !DeliveryAddress.permitted(recipient.consent(), deliveryChannel) ||
+          consent.suppressed(workspace, recipient.address(), deliveryChannel)
         ) {
           state = "CANCELLED";
           error = "CONSENT_REQUIRED_OR_SUPPRESSED";
@@ -134,6 +139,24 @@ public class RoutingEngine {
           try {
             parameters = TemplateRenderer.parameters(template.spec(), payload);
             text = TemplateRenderer.render(template.spec(), payload);
+            if (email) {
+              subject = DeliveryAddress.header(
+                TemplateRenderer.renderField(
+                  template.spec(),
+                  payload,
+                  "subject",
+                  false
+                ),
+                "subject",
+                200
+              );
+              html = TemplateRenderer.renderField(
+                template.spec(),
+                payload,
+                "html",
+                true
+              );
+            }
           } catch (IllegalArgumentException e) {
             state = "FAILED";
             error = "MISSING_TEMPLATE_VARIABLE";
@@ -147,7 +170,14 @@ public class RoutingEngine {
         command.put("language", template.spec().path("language").asText());
         command.set("parameters", json.tree(parameters));
         command.put("text", text);
-        if (state.equals("PENDING")) {
+        if (email) {
+          command.put("subject", subject);
+          command.put("html", html);
+          command.put("fromAddress", channel.spec().path("fromEmail").asText());
+          command.put("fromName", channel.spec().path("fromName").asText());
+          command.put("replyTo", channel.spec().path("replyTo").asText());
+        }
+        if (state.equals("PENDING") && !email) {
           try {
             images.attach(
               command,
@@ -170,7 +200,7 @@ public class RoutingEngine {
         UUID id = UUID.randomUUID();
         int inserted = db
           .sql(
-            "INSERT INTO notifications(id,workspace_id,application_id,event_id,rule_id,channel_connection_id,template_id,contact_id,channel,recipient_type,recipient_name,recipient_address,priority,status,command,error_code) VALUES(:id,:w,:a,:e,:r,:c,:t,:contact,'WHATSAPP',:type,:name,:address,:priority,:status,CAST(:command AS jsonb),:error) ON CONFLICT(event_id,rule_id,recipient_address) DO NOTHING"
+            "INSERT INTO notifications(id,workspace_id,application_id,event_id,rule_id,channel_connection_id,template_id,contact_id,channel,recipient_type,recipient_name,recipient_address,priority,status,command,error_code) VALUES(:id,:w,:a,:e,:r,:c,:t,:contact,:channel,:type,:name,:address,:priority,:status,CAST(:command AS jsonb),:error) ON CONFLICT(event_id,rule_id,recipient_address) DO NOTHING"
           )
           .param("id", id)
           .param("w", workspace)
@@ -180,6 +210,7 @@ public class RoutingEngine {
           .param("c", channel.id())
           .param("t", template.id())
           .param("contact", recipient.contactId())
+          .param("channel", deliveryChannel)
           .param("type", s.path("targetType").asText())
           .param("name", recipient.name())
           .param("address", recipient.address())
@@ -233,17 +264,47 @@ public class RoutingEngine {
   public List<Recipient> resolve(UUID w, JsonNode rule, JsonNode payload) {
     String type = rule.path("targetType").asText();
     List<Recipient> result = new ArrayList<>();
+    String deliveryChannel = DeliveryAddress.channel(
+      store.get(
+        Kind.CHANNELS,
+        w,
+        UUID.fromString(rule.path("channelConnectionId").asText())
+      )
+    );
     if (type.equals("EVENT_RECIPIENT")) {
       var r = payload.path("recipient");
       String phone;
       try {
-        phone = ConsentService.phone(r.path("phone").asText());
+        phone = DeliveryAddress.address(r, deliveryChannel);
       } catch (IllegalArgumentException e) {
         return List.of();
       }
-      var existing = store.contactByPhone(w, phone);
+      var existing = deliveryChannel.equals("EMAIL")
+        ? store.contactByEmail(w, phone)
+        : store.contactByPhone(w, phone);
       if (existing.isPresent()) {
-        if (existing.get().enabled()) result.add(contact(existing.get()));
+        if (existing.get().enabled()) {
+          Recipient resolved = contact(existing.get(), deliveryChannel);
+          if (
+            resolved != null &&
+            deliveryChannel.equals("WHATSAPP") &&
+            r.path("whatsappOptIn").isBoolean() &&
+            !r.path("whatsappOptIn").asBoolean()
+          ) {
+            var permission = resolved.consent().deepCopy();
+            ((com.fasterxml.jackson.databind.node.ObjectNode) permission).put(
+              "whatsappOptIn",
+              false
+            );
+            resolved = new Recipient(
+              resolved.contactId(),
+              resolved.name(),
+              resolved.address(),
+              permission
+            );
+          }
+          result.add(resolved);
+        }
       } else result.add(
         new Recipient(null, r.path("name").asText("Destinatário"), phone, r)
       );
@@ -253,7 +314,7 @@ public class RoutingEngine {
         w,
         UUID.fromString(rule.path("targetId").asText())
       );
-      if (c.enabled()) result.add(contact(c));
+      if (c.enabled()) result.add(contact(c, deliveryChannel));
     } else {
       var group = store.get(
         Kind.GROUPS,
@@ -264,11 +325,12 @@ public class RoutingEngine {
         .spec()
         .path("members")) {
         var c = store.get(Kind.CONTACTS, w, UUID.fromString(member.asText()));
-        if (c.enabled()) result.add(contact(c));
+        if (c.enabled()) result.add(contact(c, deliveryChannel));
       }
     }
     return result
       .stream()
+      .filter(Objects::nonNull)
       .collect(
         java.util.stream.Collectors.toMap(
           Recipient::address,
@@ -282,13 +344,14 @@ public class RoutingEngine {
       .toList();
   }
 
-  private Recipient contact(Resource c) {
-    return new Recipient(
-      c.id(),
-      c.name(),
-      c.spec().path("phone").asText(),
-      c.spec()
-    );
+  private Recipient contact(Resource c, String channel) {
+    String address;
+    try {
+      address = DeliveryAddress.address(c.spec(), channel);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+    return new Recipient(c.id(), c.name(), address, c.spec());
   }
 
   private void finish(

@@ -26,10 +26,38 @@ public final class TemplateRenderer {
     int index = 0;
     for (JsonNode variable : spec.path("variables"))
       replacements.put(variable.asText(), values.get(index++));
-    var matcher = PLACEHOLDER.matcher(spec.path("body").asText());
-    return matcher.replaceAll(match ->
-      Matcher.quoteReplacement(replacements.get(match.group(1)))
-    );
+    return renderValues(spec.path("body").asText(), replacements, false);
+  }
+
+  public static String renderField(
+    JsonNode spec,
+    JsonNode payload,
+    String field,
+    boolean html
+  ) {
+    List<String> values = parameters(spec, payload);
+    Map<String, String> replacements = new HashMap<>();
+    int index = 0;
+    for (JsonNode variable : spec.path("variables"))
+      replacements.put(variable.asText(), values.get(index++));
+    return renderValues(spec.path(field).asText(), replacements, html);
+  }
+
+  public static String renderValues(
+    String body,
+    Map<String, String> values,
+    boolean html
+  ) {
+    return PLACEHOLDER.matcher(body).replaceAll(match -> {
+      String value = values.get(match.group(1));
+      if (value == null) throw new IllegalArgumentException(
+        "Variável não declarada: " + match.group(1)
+      );
+      if (html) value = org.springframework.web.util.HtmlUtils.htmlEscape(
+        value
+      );
+      return Matcher.quoteReplacement(value);
+    });
   }
 
   public static List<String> parameters(JsonNode spec, JsonNode payload) {
@@ -48,14 +76,15 @@ public final class TemplateRenderer {
       ) throw new IllegalArgumentException("Variável ausente: " + path);
       result.add(value.asText());
     }
-    for (String variable : variables(spec.path("body").asText())) {
-      boolean found = false;
-      for (JsonNode declared : spec.path("variables"))
-        if (declared.asText().equals(variable)) found = true;
-      if (!found) throw new IllegalArgumentException(
-        "Variável não declarada: " + variable
-      );
-    }
+    for (String field : List.of("body", "subject", "html"))
+      for (String variable : variables(spec.path(field).asText())) {
+        boolean found = false;
+        for (JsonNode declared : spec.path("variables"))
+          if (declared.asText().equals(variable)) found = true;
+        if (!found) throw new IllegalArgumentException(
+          "Variável não declarada: " + variable
+        );
+      }
     return result;
   }
 }

@@ -90,6 +90,9 @@ class IntegrationTest {
   @MockitoSpyBean
   FakeProvider fake;
 
+  @MockitoSpyBean
+  com.mibess.notify.email.EmailSmtpProvider smtp;
+
   @org.springframework.test.context.bean.override.mockito.MockitoBean
   com.mibess.notify.media.ImageStorage imageStorage;
 
@@ -1825,4 +1828,476 @@ class IntegrationTest {
 
   @Autowired
   com.mibess.notify.event.EventService eventService;
+
+  record EmailFixture(UUID channel, UUID template, UUID rule) {}
+
+  EmailFixture emailRule(String eventType) {
+    UUID channelId = UUID.randomUUID(),
+      templateId = UUID.randomUUID(),
+      ruleId = UUID.randomUUID();
+    var spec = json
+      .object()
+      .put("provider", "EMAIL_SMTP")
+      .put("smtpHost", "smtp.example.com")
+      .put("smtpPort", 465)
+      .put("smtpSecurity", "TLS")
+      .put("fromEmail", "contato@artgian.com.br")
+      .put("fromName", "Artgian");
+    var crypto = new Crypto("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+    spec.put(
+      "encryptedCredentials",
+      crypto.encrypt(
+        "{\"username\":\"test\",\"password\":\"test\"}",
+        Bootstrap.WORKSPACE + ":" + channelId
+      )
+    );
+    store.save(
+      Kind.CHANNELS,
+      Bootstrap.WORKSPACE,
+      channelId,
+      "MAIL_" + channelId.toString().substring(0, 8),
+      "Artgian email",
+      true,
+      spec
+    );
+    var t = json.object().put("channelConnectionId", templateId.toString());
+    t.put("channelConnectionId", channelId.toString())
+      .put("status", "APPROVED")
+      .put("language", "pt_BR")
+      .put("category", "UTILITY")
+      .put("body", "Pedido {{orderNumber}}")
+      .put("subject", "Compra {{orderNumber}}")
+      .put("html", "<b>{{orderNumber}}</b>");
+    t.set("variables", json.tree(List.of("orderNumber")));
+    store.save(
+      Kind.TEMPLATES,
+      Bootstrap.WORKSPACE,
+      templateId,
+      "MAIL_TEMPLATE_" + templateId.toString().substring(0, 8),
+      "Email pedido",
+      true,
+      t
+    );
+    var r = json
+      .object()
+      .put("applicationId", app.toString())
+      .put("eventType", eventType)
+      .put("targetType", "EVENT_RECIPIENT")
+      .put("channelConnectionId", channelId.toString())
+      .put("templateId", templateId.toString())
+      .put("priority", "NORMAL");
+    r.set("conditions", json.tree(List.of()));
+    store.save(
+      Kind.RULES,
+      Bootstrap.WORKSPACE,
+      ruleId,
+      "MAIL_RULE_" + ruleId.toString().substring(0, 8),
+      "Email ao comprador",
+      true,
+      r
+    );
+    doAnswer(invocation ->
+      new com.mibess.notify.channel.ChannelProvider.Result(
+        "<" + UUID.randomUUID() + "@test.local>",
+        250
+      )
+    )
+      .when(smtp)
+      .send(any());
+    return new EmailFixture(channelId, templateId, ruleId);
+  }
+
+  String buyerEvent(String order, String recipient) {
+    return (
+      "{\"type\":\"ORDER_PAID\",\"data\":{\"orderNumber\":\"" +
+      order +
+      "\"},\"recipient\":" +
+      recipient +
+      "}"
+    );
+  }
+
+  void awaitEmail(UUID eventId, String expected) {
+    await()
+      .atMost(Duration.ofSeconds(30))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql(
+              "SELECT status FROM notifications WHERE event_id=:e AND channel='EMAIL'"
+            )
+            .param("e", eventId)
+            .query(String.class)
+            .optional()
+            .orElse("")
+        ).isEqualTo(expected)
+      );
+  }
+
+  @Test
+  void buyerEmailWithoutPhoneOrWhatsappConsentFansOutAndDeduplicates()
+    throws Exception {
+    var email = emailRule("ORDER_PAID");
+    rule("ORDER_PAID", "EVENT_RECIPIENT", null, List.of());
+    String payload = buyerEvent(
+      "EMAIL-ONLY",
+      "{\"name\":\"Buyer\",\"email\":\"buyer-" +
+        app +
+        "@example.com\",\"whatsappOptIn\":false}"
+    );
+    String idem = "email-only-" + app;
+    UUID eventId = UUID.fromString(
+      json.read(event(idem, payload)).path("eventId").asText()
+    );
+    awaitEmail(eventId, "SENT");
+    assertThat(
+      json.read(event(idem, payload)).path("duplicate").asBoolean()
+    ).isTrue();
+    var rows = db
+      .sql(
+        "SELECT channel,status,attempt_count,delivered_at,read_at FROM notifications WHERE event_id=:e"
+      )
+      .param("e", eventId)
+      .query()
+      .listOfRows();
+    assertThat(rows).hasSize(2);
+    assertThat(rows).allSatisfy(row -> {
+      assertThat(row.get("attempt_count")).isEqualTo(1);
+      assertThat(row.get("delivered_at")).isNull();
+      assertThat(row.get("read_at")).isNull();
+    });
+    mvc
+      .perform(
+        post("/api/v1/admin/rules/" + email.rule() + "/test")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(payload.replace("\"type\":", "\"eventType\":"))
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.renderedSubject").value("Compra EMAIL-ONLY"))
+      .andExpect(jsonPath("$.problems.length()").value(0));
+  }
+
+  @Test
+  void explicitBuyerWhatsappDeclineOverridesStoredConsentButEmailStillSends()
+    throws Exception {
+    emailRule("ORDER_PAID");
+    rule("ORDER_PAID", "EVENT_RECIPIENT", null, List.of());
+    String phone = store
+      .get(Kind.CONTACTS, Bootstrap.WORKSPACE, contact)
+      .spec()
+      .path("phone")
+      .asText();
+    String payload = buyerEvent(
+      "DECLINED",
+      "{\"name\":\"Buyer\",\"phone\":\"" +
+        phone +
+        "\",\"email\":\"decline-" +
+        app +
+        "@example.com\",\"whatsappOptIn\":false}"
+    );
+    UUID eventId = UUID.fromString(
+      json
+        .read(event("decline-" + app, payload))
+        .path("eventId")
+        .asText()
+    );
+    awaitEmail(eventId, "SENT");
+    assertThat(
+      db
+        .sql(
+          "SELECT status FROM notifications WHERE event_id=:e AND channel='WHATSAPP' AND recipient_type='EVENT_RECIPIENT'"
+        )
+        .param("e", eventId)
+        .query(String.class)
+        .single()
+    ).isEqualTo("CANCELLED");
+    assertThat(
+      db
+        .sql(
+          "SELECT status FROM notifications WHERE event_id=:e AND channel='WHATSAPP' AND recipient_type='CONTACT_GROUP'"
+        )
+        .param("e", eventId)
+        .query(String.class)
+        .single()
+    ).isEqualTo("SENT");
+  }
+
+  @Test
+  void emailRetryAndSuppressionAreIndependentOfInternalWhatsapp()
+    throws Exception {
+    emailRule("ORDER_PAID");
+    doThrow(new DeliveryFailure("SMTP_REJECTED_451", true, false, 451))
+      .doReturn(
+        new com.mibess.notify.channel.ChannelProvider.Result(
+          "<retry-" + app + "@test.local>",
+          250
+        )
+      )
+      .when(smtp)
+      .send(any());
+    String address = "retry-" + app + "@example.com";
+    UUID eventId = UUID.fromString(
+      json
+        .read(
+          event(
+            "retry-mail-" + app,
+            buyerEvent("RETRY", "{\"email\":\"" + address + "\"}")
+          )
+        )
+        .path("eventId")
+        .asText()
+    );
+    awaitEmail(eventId, "SENT");
+    assertThat(
+      db
+        .sql(
+          "SELECT attempt_count FROM notifications WHERE event_id=:e AND channel='EMAIL'"
+        )
+        .param("e", eventId)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(2);
+    assertThat(
+      db
+        .sql(
+          "SELECT attempt_count FROM notifications WHERE event_id=:e AND channel='WHATSAPP'"
+        )
+        .param("e", eventId)
+        .query(Integer.class)
+        .single()
+    ).isEqualTo(1);
+    mvc
+      .perform(
+        post("/api/v1/admin/suppressions")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(
+            json.write(
+              Map.of(
+                "channel",
+                "EMAIL",
+                "address",
+                address,
+                "reason",
+                "test suppression"
+              )
+            )
+          )
+      )
+      .andExpect(status().isOk());
+    UUID suppressed = UUID.fromString(
+      json
+        .read(
+          event(
+            "suppressed-mail-" + app,
+            buyerEvent("SUPPRESSED", "{\"email\":\"" + address + "\"}")
+          )
+        )
+        .path("eventId")
+        .asText()
+    );
+    awaitEmail(suppressed, "CANCELLED");
+    await()
+      .atMost(Duration.ofSeconds(15))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql(
+              "SELECT status FROM notifications WHERE event_id=:e AND channel='WHATSAPP'"
+            )
+            .param("e", suppressed)
+            .query(String.class)
+            .single()
+        ).isEqualTo("SENT")
+      );
+  }
+
+  @Test
+  void emailOnlyContactManualPreviewAndEncryptedChannelCrud() throws Exception {
+    var email = emailRule("ORDER_PAID");
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    var contactBody = json
+      .object()
+      .put("code", "EMAIL_ONLY_" + suffix)
+      .put("name", "Buyer email")
+      .put("enabled", true);
+    contactBody.set(
+      "spec",
+      json.tree(
+        Map.of(
+          "email",
+          "manual-" + suffix + "@example.com",
+          "phone",
+          "",
+          "type",
+          "CUSTOMER",
+          "whatsappOptIn",
+          false
+        )
+      )
+    );
+    String created = mvc
+      .perform(
+        post("/api/v1/admin/contacts")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(contactBody))
+      )
+      .andExpect(status().isOk())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    UUID contactId = UUID.fromString(json.read(created).path("id").asText());
+    assertThat(json.read(created).path("spec").has("phone")).isFalse();
+    var input = json
+      .object()
+      .put("requestId", UUID.randomUUID().toString())
+      .put("contactId", contactId.toString())
+      .put("channelConnectionId", email.channel().toString())
+      .put("subject", "Compra manual")
+      .put("text", "Seu pedido chegou.")
+      .put("html", "<p>Seu pedido chegou.</p>");
+    String preview = mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual/preview")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.fromAddress").value("contato@artgian.com.br"))
+      .andExpect(jsonPath("$.subject").value("Compra manual"))
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    input.put("previewHash", json.read(preview).path("previewHash").asText());
+    String sent = mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isAccepted())
+      .andReturn()
+      .getResponse()
+      .getContentAsString();
+    UUID notificationId = UUID.fromString(
+      json.read(sent).path("notificationId").asText()
+    );
+    await()
+      .atMost(Duration.ofSeconds(15))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql(
+              "SELECT status FROM notifications WHERE id=:id AND channel='EMAIL'"
+            )
+            .param("id", notificationId)
+            .query(String.class)
+            .single()
+        ).isEqualTo("SENT")
+      );
+    input.put("subject", "Changed after preview");
+    mvc
+      .perform(
+        post("/api/v1/admin/notifications/manual")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(input))
+      )
+      .andExpect(status().isConflict());
+    var channelBody = json
+      .object()
+      .put("code", "SMTP_CRUD_" + suffix)
+      .put("name", "SMTP CRUD")
+      .put("enabled", true);
+    channelBody.set(
+      "spec",
+      json.tree(
+        Map.of(
+          "provider",
+          "EMAIL_SMTP",
+          "smtpHost",
+          "smtp.zoho.com",
+          "smtpPort",
+          465,
+          "smtpSecurity",
+          "TLS",
+          "fromEmail",
+          "contato@artgian.com.br",
+          "credentials",
+          Map.of(
+            "username",
+            "contato@artgian.com.br",
+            "password",
+            "test-only-secret"
+          )
+        )
+      )
+    );
+    mvc
+      .perform(
+        post("/api/v1/admin/channels")
+          .with(user("admin@mibess.com.br").roles("ADMIN"))
+          .with(csrf())
+          .contentType("application/json")
+          .content(json.write(channelBody))
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.spec.credentialsConfigured").value(true))
+      .andExpect(jsonPath("$.spec.credentials").doesNotExist())
+      .andExpect(jsonPath("$.spec.encryptedCredentials").doesNotExist());
+  }
+
+  @Test
+  void invalidBuyerEmailDoesNotPreventWhatsappDelivery() throws Exception {
+    emailRule("ORDER_PAID");
+    rule("ORDER_PAID", "EVENT_RECIPIENT", null, List.of());
+    String phone = store
+      .get(Kind.CONTACTS, Bootstrap.WORKSPACE, contact)
+      .spec()
+      .path("phone")
+      .asText();
+    String payload = buyerEvent(
+      "BAD-EMAIL",
+      "{\"phone\":\"" + phone + "\",\"email\":\"invalid-email\"}"
+    );
+    UUID eventId = UUID.fromString(
+      json
+        .read(event("bad-email-" + app, payload))
+        .path("eventId")
+        .asText()
+    );
+    await()
+      .atMost(Duration.ofSeconds(15))
+      .untilAsserted(() ->
+        assertThat(
+          db
+            .sql(
+              "SELECT count(*) FROM notifications WHERE event_id=:e AND channel='WHATSAPP' AND status='SENT'"
+            )
+            .param("e", eventId)
+            .query(Integer.class)
+            .single()
+        ).isEqualTo(2)
+      );
+    assertThat(
+      db
+        .sql(
+          "SELECT count(*) FROM notifications WHERE event_id=:e AND channel='EMAIL'"
+        )
+        .param("e", eventId)
+        .query(Integer.class)
+        .single()
+    ).isZero();
+    verify(smtp, never()).send(any());
+  }
 }

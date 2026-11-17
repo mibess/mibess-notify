@@ -216,7 +216,10 @@
         >
           <option value="">Todos os canais</option>
           @for(c of resources()['channels'];track c.id){
-          <option [value]="c.id">{{c.name}}</option>
+          <option [value]="c.id">
+            {{c.name}} · {{providerLabel(c.spec.provider)}}{{c.spec.fromEmail?'
+            · '+c.spec.fromEmail:''}}
+          </option>
           }</select
         >}@if(page()==='notifications'||page()==='events'){<select
           aria-label="Status"
@@ -488,21 +491,23 @@
                     ')}}</span
                   ><small class="cell-sub"
                     >{{name('channels',row.spec.channelConnectionId)}}</small
-                  >}@case('contacts'){<span>{{mask(row.spec.phone)}}</span
+                  >}@case('contacts'){<span
+                    >{{mask(row.spec.phone||row.spec.email)}}</span
                   ><small class="cell-sub"
-                    >{{row.spec.whatsappOptIn?'Com consentimento':'Consentimento
-                    pendente'}}</small
+                    >{{row.spec.email||''}}
+                    {{row.spec.phone?(row.spec.whatsappOptIn?'· WhatsApp
+                    autorizado':'· WhatsApp sem consentimento'):''}}</small
                   >}@case('groups'){<span
                     >{{row.spec.members?.length||0}} contatos</span
                   >}@case('templates'){<span class="code-text"
-                    >{{row.spec.providerTemplateName}}</span
+                    >{{row.spec.subject||row.spec.providerTemplateName}}</span
                   ><small class="cell-sub"
                     >{{row.spec.language}} · {{label(row.spec.status)}}</small
                   >}@case('channels'){<span
-                    >WhatsApp · {{row.spec.provider === 'WHATSAPP_EVOLUTION' ?
-                    'Evolution API' : 'Meta Cloud API'}}</span
+                    >{{providerLabel(row.spec.provider)}}</span
                   ><small class="cell-sub"
-                    >{{row.spec.credentialsConfigured?'Credenciais
+                    >{{row.spec.fromEmail||''}}
+                    {{row.spec.credentialsConfigured?'Credenciais
                     configuradas':'Aguardando configuração'}}</small
                   >}@default{<span
                     >{{row.spec.description||'Eventos de negócio'}}</span
@@ -602,10 +607,20 @@
           @if(canOperate()){
           <form (ngSubmit)="suppress()">
             <label
-              >Telefone<input
-                name="suppressionPhone"
+              >Canal<select
+                name="suppressionChannel"
+                [(ngModel)]="suppressionForm.channel"
+              >
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="EMAIL">E-mail</option>
+              </select></label
+            >
+            <label
+              >{{suppressionForm.channel==='EMAIL'?'E-mail':'Telefone'}}<input
+                name="suppressionAddress"
+                [type]="suppressionForm.channel==='EMAIL'?'email':'tel'"
                 [(ngModel)]="suppressionForm.address"
-                placeholder="+5516999999999"
+                [placeholder]="suppressionForm.channel==='EMAIL'?'cliente@exemplo.com':'+5516999999999'"
                 required /></label
             ><label
               >Motivo<input
@@ -618,7 +633,10 @@
           </form>
           }@for(s of suppressions();track s.id){
           <div class="setting-row">
-            <span>{{mask(s.address)}}</span><small>{{s.reason}}</small>
+            <span
+              >{{s.channel==='EMAIL'?'E-mail':'WhatsApp'}} ·
+              {{mask(s.address)}}</span
+            ><small>{{s.reason}}</small>
           </div>
           }
         </section>
@@ -706,7 +724,8 @@
                   @if(page()==='audit'){<span class="code-text"
                     >{{row.resource_id?.slice(0,8)||'—'}}</span
                   >}@else{<span class="chip" [ngClass]="statusClass(row.status)"
-                    ><i></i>{{label(row.status)}}</span
+                    ><i></i
+                    >{{notificationStatus(row.status,row.channel_connection_id,row.channel)}}</span
                   >}
                 </td>
                 <td class="subtle">
@@ -786,14 +805,17 @@
           </td>
           <td>
             <span class="channel-label"
-              ><app-icon name="channels" />WhatsApp</span
+              ><app-icon
+                name="channels"
+              />{{channelLabel(row.channel_connection_id,row.channel)}}</span
             ><small class="cell-sub"
               >{{name('channels',row.channel_connection_id)}}</small
             >
           </td>
           <td>
             <span class="chip" [ngClass]="statusClass(row.status)"
-              ><i></i>{{label(row.status)}}</span
+              ><i></i
+              >{{notificationStatus(row.status,row.channel_connection_id,row.channel)}}</span
             >
           </td>
           <td class="subtle nowrap">{{row.created_at|date:'dd MMM, HH:mm'}}</td>
@@ -995,7 +1017,9 @@
               (change)="toggleMember(c.id)"
               [disabled]="!isAdmin()"
             /><span
-              >{{c.name}}<small>{{mask(c.spec['phone'])}}</small></span
+              >{{c.name}}<small
+                >{{mask(c.spec['phone']||c.spec['email'])}}</small
+              ></span
             ></label
           >}@empty{
           <p class="subtle">Cadastre contatos antes de adicionar membros.</p>
@@ -1048,6 +1072,7 @@
             [name]="field.key"
             [(ngModel)]="form.spec[field.key]"
             [placeholder]="field.placeholder||''"
+            [attr.maxlength]="field.maxLength||null"
             [required]="!!field.required"
             rows="4"
             [disabled]="!isAdmin()"
@@ -1055,6 +1080,7 @@
           >}@else if(field.type==='select'){<select
             [name]="field.key"
             [(ngModel)]="form.spec[field.key]"
+            (ngModelChange)="field.key==='provider'&&channelChanged()"
             [required]="!!field.required"
             [disabled]="!isAdmin()"
           >
@@ -1077,6 +1103,7 @@
             [type]="field.type||'text'"
             [(ngModel)]="form.spec[field.key]"
             [placeholder]="field.placeholder||''"
+            [attr.maxlength]="field.maxLength||null"
             [required]="!!field.required"
             [disabled]="!isAdmin()"
             [autocomplete]="field.type==='password'?'new-password':'off'"
@@ -1087,9 +1114,12 @@
       <div class="info-note">
         <app-icon name="shield" />
         <p>
-          As credenciais são criptografadas e nunca voltam ao navegador. A
+          As credenciais são criptografadas e nunca voltam ao navegador.
+          @if(form.spec.provider==='EMAIL_SMTP'){Use TLS (geralmente porta 465)
+          ou STARTTLS (geralmente 587). O endereço remetente deve ser autorizado
+          pelo servidor SMTP.} @else if(form.spec.provider==='WHATSAPP_META'){A
           coexistência deve estar habilitada na conta Meta. Webhook:
-          <code>/webhooks/meta/whatsapp</code>
+          <code>/webhooks/meta/whatsapp</code>}
         </p>
       </div>
       }@if(page()==='templates'){
@@ -1117,9 +1147,11 @@
       <div class="info-note">
         <app-icon name="templates" />
         <p>
-          Na Evolution, APPROVED representa revisão local. Na Meta, use um
-          template realmente aprovado; alterar este cadastro não aprova o
-          template no provider.
+          @if(templateIsEmail){APPROVED indica que o assunto e as versões em
+          texto e HTML foram revisados para envio por e-mail.} @else{Na
+          Evolution, APPROVED representa revisão local. Na Meta, use um template
+          realmente aprovado; alterar este cadastro não aprova o template no
+          provider.}
         </p>
       </div>
       }
@@ -1165,7 +1197,8 @@
     }@if(detail().notification){
     <div class="notification-summary">
       <span class="chip" [ngClass]="statusClass(detail().notification.status)"
-        ><i></i>{{label(detail().notification.status)}}</span
+        ><i></i
+        >{{notificationStatus(detail().notification.status,detail().notification.channel_connection_id,detail().notification.channel)}}</span
       >
       <h3>{{detail().notification.recipient_name}}</h3>
       <p>{{mask(detail().notification.recipient_address)}}</p>
@@ -1181,6 +1214,7 @@
           <dt>Identidade remetente</dt>
           <dd>
             {{name('channels',detail().notification.channel_connection_id)}}
+            <small>{{detail().fromAddress||''}}</small>
           </dd>
         </div>
         <div>
@@ -1199,7 +1233,15 @@
       <div class="error">{{detail().notification.error_code}}</div>
       }
     </div>
-    @if(detail().imageId){<img
+    @if(channelLabel(detail().notification.channel_connection_id,detail().notification.channel)==='E-mail'){
+    <p class="subtle">
+      O status “Aceita pelo SMTP” confirma a aceitação pelo servidor de e-mail.
+      Ele não confirma chegada à caixa de entrada ou leitura.
+    </p>
+    @if(detail().subject){
+    <h3 class="section-title">Assunto</h3>
+    <p>{{detail().subject}}</p>
+    } } @if(detail().imageId){<img
       class="notification-image"
       [src]="'/api/v1/admin/images/'+detail().imageId+'/content'"
       alt="Imagem enviada na notificação"
@@ -1216,7 +1258,9 @@
           ><app-icon [name]="item.status==='FAILED'?'alert':'check'"
         /></span>
         <div>
-          <strong>{{label(item.status)}}</strong>
+          <strong
+            >{{notificationStatus(item.status,detail().notification.channel_connection_id,detail().notification.channel)}}</strong
+          >
           <p>{{item.description}}</p>
           <time>{{item.created_at|date:'dd/MM/yyyy · HH:mm:ss'}}</time>
         </div>
@@ -1228,7 +1272,7 @@
     <div class="attempt-card">
       <strong>Tentativa {{attempt.attempt_number}}</strong
       ><span class="chip" [ngClass]="statusClass(attempt.status)"
-        >{{label(attempt.status)}}</span
+        >{{notificationStatus(attempt.status,detail().notification.channel_connection_id,detail().notification.channel)}}</span
       ><small>{{attempt.started_at|date:'dd/MM · HH:mm:ss'}}</small
       >@if(attempt.error_message){
       <p>{{attempt.error_message}}</p>
@@ -1295,7 +1339,8 @@
       class="text-button"
       (click)="openNotification(notification.id)"
     >
-      {{mask(notification.recipient_address)}} · {{label(notification.status)}}</button
+      {{mask(notification.recipient_address)}} ·
+      {{notificationStatus(notification.status,notification.channel_connection_id,notification.channel)}}</button
     >}} }@else{
     <pre class="record-json">{{detail().record|json}}</pre>
     }
@@ -1448,12 +1493,18 @@
               <option value="">Selecione o destinatário</option>
               @for(c of resources()['contacts']||[];track c.id){
               <option [value]="c.id" [disabled]="!c.enabled">
-                {{c.name}} · {{c.spec.phone}}{{!c.enabled?' (inativo)':''}}
+                {{c.name}} ·
+                {{contactAddress(c,manualForm.channelConnectionId)}}{{!c.enabled?'
+                (inativo)':''}}
               </option>
               }
             </select></label
           >
-          @if(manualContact){<small class="manual-consent"
+          @if(manualContact&&manualIsEmail){<small class="manual-consent"
+            >E-mail transacional para {{manualContact.spec.email||'e-mail não
+            cadastrado'}}. O bloqueio por e-mail será verificado antes do
+            envio.</small
+          >} @else if(manualContact){<small class="manual-consent"
             >{{manualContact.spec.whatsappOptIn&&!manualContact.spec.whatsappOptOutAt?'O
             consentimento será validado antes do envio.':'Este contato precisa
             de consentimento. Atualize o cadastro em Contatos.'}}</small
@@ -1468,7 +1519,11 @@
             >
               <option value="">Selecione o canal de envio</option>
               @for(c of manualChannels;track c.id){
-              <option [value]="c.id">{{c.name}}</option>
+              <option [value]="c.id">
+                {{c.name}} ·
+                {{providerLabel(c.spec.provider)}}{{c.spec.fromEmail?' ·
+                '+c.spec.fromEmail:''}}
+              </option>
               }
             </select></label
           >
@@ -1507,7 +1562,9 @@
           <p class="manual-notice">
             Não há templates ativos e aprovados para este remetente.
           </p>
-          } @if(manualTemplate){
+          } @if(manualTemplate){ @if(manualIsEmail){
+          <p><strong>Assunto:</strong> {{manualTemplate.spec.subject}}</p>
+          }
           <pre class="message-preview template-body">
 {{manualTemplate.spec.body}}</pre>
           } @for(variable of manualVariables;track variable){<label
@@ -1519,13 +1576,21 @@
               maxlength="4096"
               [(ngModel)]="manualForm.variables[variable]"
               (ngModelChange)="manualChanged()" /></label
-          >} } @else {
+          >} } @else { @if(manualIsEmail){<label for="manual-subject"
+            >Assunto do e-mail<input
+              id="manual-subject"
+              name="subject"
+              required
+              maxlength="200"
+              [(ngModel)]="manualSubject"
+              (ngModelChange)="manualChanged()" /></label
+          >}
           <label for="manual-text"
             >Texto da mensagem<textarea
               id="manual-text"
               name="message"
               required
-              maxlength="4096"
+              [maxlength]="manualIsEmail?20000:4096"
               rows="7"
               placeholder="Escreva a mensagem que o contato vai receber..."
               [(ngModel)]="manualForm.text"
@@ -1533,10 +1598,21 @@
             ></textarea>
           </label>
           <small class="manual-count"
-            >{{manualForm.text.length}} / 4096 caracteres</small
+            >{{manualForm.text.length}} / {{manualIsEmail?20000:4096}}
+            caracteres</small
           >
-          } @if(manualChannel?.spec?.['provider']!=='WHATSAPP_META' ||
-          manualTemplate?.spec?.['headerType']==='IMAGE'){
+          @if(manualIsEmail){<label for="manual-html"
+            >HTML do e-mail (opcional)<textarea
+              id="manual-html"
+              name="emailHtml"
+              maxlength="50000"
+              rows="5"
+              [(ngModel)]="manualHtml"
+              (ngModelChange)="manualChanged()"
+            ></textarea></label
+          >} } @if(!manualIsEmail &&
+          (manualChannel?.spec?.['provider']!=='WHATSAPP_META' ||
+          manualTemplate?.spec?.['headerType']==='IMAGE')){
           <notification-image
             (busyChange)="imageUploading.set($event)"
             [value]="manualImageId"
@@ -1582,16 +1658,32 @@
         </div>
         <div>
           <dt>Remetente</dt>
-          <dd>{{manualPreview().channelName}}</dd>
+          <dd>
+            {{manualPreview().channelName}}<small
+              >{{manualPreview().fromAddress}}</small
+            >
+          </dd>
         </div>
       </dl>
       @if(manualPreview().imageId){<img
         class="notification-image"
         [src]="'/api/v1/admin/images/'+manualPreview().imageId+'/content'"
         alt="Imagem da mensagem a enviar"
-      />}
+      />} @if(manualPreview().subject){
+      <p><strong>Assunto:</strong> {{manualPreview().subject}}</p>
+      }
       <pre class="message-preview">{{manualPreview().text}}</pre>
-      @if(manualPending&&!saving()){
+      @if(manualPreview().html){
+      <details>
+        <summary>Conferir versão HTML</summary>
+        <pre class="message-preview">{{manualPreview().html}}</pre>
+      </details>
+      } @if(manualPreview().fromAddress){
+      <p class="subtle">
+        O histórico registra aceitação pelo servidor SMTP. Entrega na caixa de
+        entrada e leitura não são confirmadas por esse status.
+      </p>
+      } @if(manualPending&&!saving()){
       <p class="manual-notice">
         A confirmação do servidor ainda está pendente. Verifique novamente; esta
         ação reutiliza o mesmo envio e evita duplicatas.
@@ -1756,6 +1848,14 @@
     <h3 class="section-title">Mensagem renderizada</h3>
     <pre class="message-preview">
 {{ruleTest().renderedMessage||'Não foi possível renderizar a mensagem.'}}</pre>
+    @if(ruleTest().renderedSubject){
+    <p><strong>Assunto:</strong> {{ruleTest().renderedSubject}}</p>
+    } @if(ruleTest().renderedHtml){
+    <details>
+      <summary>Conferir versão HTML</summary>
+      <pre class="message-preview">{{ruleTest().renderedHtml}}</pre>
+    </details>
+    }
     <h3 class="section-title">Destinatários resolvidos</h3>
     @for(recipient of ruleTest().recipients||[];track $index){
     <p>
@@ -1778,7 +1878,8 @@
         @for(contact of resources()['contacts']||[];track
         contact.id){@if(contact.enabled){
         <option [value]="contact.id">
-          {{contact.name}} · {{contact.spec.phone}}
+          {{contact.name}} ·
+          {{contactAddress(contact,ruleTest()?.channelConnectionId)}}
         </option>
         }}
       </select></label

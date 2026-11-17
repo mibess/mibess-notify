@@ -16,6 +16,7 @@ interface Field {
   ref?: string;
   placeholder?: string;
   hint?: string;
+  maxLength?: number;
 }
 export const LABELS: Record<string, string> = {
   INVALID_NOTIFICATION_IMAGE:
@@ -85,13 +86,13 @@ const FIELDS: Record<string, Field[]> = {
       key: "phone",
       label: "Telefone",
       placeholder: "+5516999999999",
-      required: true,
+      hint: "Preencha um telefone ou e-mail. WhatsApp exige consentimento próprio.",
     },
     { key: "email", label: "E-mail", type: "email" },
     SELECT("type", "Tipo de contato", ["INTERNAL", "CUSTOMER", "OTHER"]),
     {
       key: "whatsappOptIn",
-      label: "Consentimento para receber mensagens",
+      label: "Consentimento para receber WhatsApp",
       type: "checkbox",
     },
     {
@@ -119,7 +120,39 @@ const FIELDS: Record<string, Field[]> = {
     },
   ],
   channels: [
-    SELECT("provider", "Provedor", ["WHATSAPP_META", "WHATSAPP_EVOLUTION"]),
+    SELECT("provider", "Provedor", [
+      "WHATSAPP_META",
+      "WHATSAPP_EVOLUTION",
+      "EMAIL_SMTP",
+    ]),
+    {
+      key: "smtpHost",
+      label: "Servidor SMTP",
+      required: true,
+      placeholder: "smtp.zoho.com",
+    },
+    { key: "smtpPort", label: "Porta SMTP", type: "number", required: true },
+    SELECT("smtpSecurity", "Segurança SMTP", ["TLS", "STARTTLS"]),
+    {
+      key: "fromEmail",
+      label: "E-mail remetente",
+      type: "email",
+      required: true,
+    },
+    { key: "fromName", label: "Nome do remetente" },
+    { key: "replyTo", label: "E-mail para respostas", type: "email" },
+    {
+      key: "username",
+      label: "Usuário SMTP",
+      type: "password",
+      hint: "Deixe vazio para preservar a credencial atual.",
+    },
+    {
+      key: "password",
+      label: "Senha SMTP",
+      type: "password",
+      hint: "Use uma senha de aplicativo. Deixe vazio para preservar a credencial atual.",
+    },
     { key: "instanceName", label: "Instância Evolution", required: true },
     {
       key: "apiKey",
@@ -162,6 +195,20 @@ const FIELDS: Record<string, Field[]> = {
     },
   ],
   templates: [
+    REF("channelConnectionId", "Identidade remetente", "channels"),
+    {
+      key: "subject",
+      label: "Assunto do e-mail",
+      required: true,
+      maxLength: 200,
+    },
+    {
+      key: "html",
+      label: "Versão HTML do e-mail (opcional)",
+      type: "textarea",
+      maxLength: 50000,
+      hint: "Use as mesmas variáveis do texto. O HTML é enviado como alternativa ao texto simples.",
+    },
     {
       key: "imageId",
       label: "Imagem deste template (opcional)",
@@ -180,7 +227,6 @@ const FIELDS: Record<string, Field[]> = {
       options: ["NONE", "IMAGE"],
       hint: "Na Meta, selecione IMAGE somente se o template foi aprovado com cabeçalho de imagem. Templates NONE continuam enviando apenas texto.",
     },
-    REF("channelConnectionId", "Identidade remetente", "channels"),
     {
       key: "providerTemplateName",
       label: "Nome de referência do template",
@@ -285,11 +331,12 @@ export class AppComponent {
   filterStatus = "";
   period = "today";
   editId = "";
+  private channelProviderAtOpen = "";
   form: any = {};
   currentPassword = "";
   newPassword = "";
   userForm = { email: "", password: "", role: "VIEWER" };
-  suppressionForm = { address: "", reason: "" };
+  suppressionForm = { channel: "WHATSAPP", address: "", reason: "" };
   suppressions = signal<any[]>([]);
   users = signal<any[]>([]);
   noMatchEvents = signal<any[]>([]);
@@ -400,6 +447,8 @@ export class AppComponent {
       this.user.set(null);
       this.manualPending = null;
       this.manualImageId = "";
+      this.manualSubject = "";
+      this.manualHtml = "";
       this.manualPreview.set(null);
       this.manualResult.set(null);
       this.manualForm = {
@@ -528,8 +577,53 @@ export class AppComponent {
   name(kind: string, id: string) {
     return this.resources()[kind]?.find((r) => r.id === id)?.name || "—";
   }
-  mask(phone: string) {
-    return phone ? phone.slice(0, 5) + " •••• " + phone.slice(-4) : "—";
+  mask(address: string) {
+    if (!address) return "—";
+    if (address.includes("@")) {
+      const [local, domain] = address.split("@");
+      return local.slice(0, 2) + "•••@" + domain;
+    }
+    return address.slice(0, 5) + " •••• " + address.slice(-4);
+  }
+  channelLabel(id: string, recordedChannel?: string) {
+    if (recordedChannel === "EMAIL") return "E-mail";
+    if (recordedChannel === "WHATSAPP") return "WhatsApp";
+    const channel = this.resources()["channels"]?.find((c) => c.id === id);
+    return channel?.spec["provider"] === "EMAIL_SMTP" ? "E-mail" : "WhatsApp";
+  }
+  providerLabel(provider: string) {
+    return (
+      (
+        {
+          EMAIL_SMTP: "E-mail · SMTP",
+          WHATSAPP_EVOLUTION: "WhatsApp · Evolution API",
+          WHATSAPP_META: "WhatsApp · Meta Cloud API",
+          FAKE: "Canal de teste",
+        } as Record<string, string>
+      )[provider] || provider
+    );
+  }
+  contactAddress(contact: Resource, channelId?: string) {
+    if (channelId)
+      return this.channelLabel(channelId) === "E-mail"
+        ? contact.spec["email"] || "E-mail não cadastrado"
+        : contact.spec["phone"] || "Telefone não cadastrado";
+    return [contact.spec["phone"], contact.spec["email"]]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  notificationStatus(
+    status: string,
+    channelId: string,
+    recordedChannel?: string,
+  ) {
+    return status === "SENT" &&
+      this.channelLabel(channelId, recordedChannel) === "E-mail"
+      ? "Aceita pelo SMTP"
+      : this.label(status);
+  }
+  get templateIsEmail() {
+    return this.channelLabel(this.form.spec?.channelConnectionId) === "E-mail";
   }
   statusClass(status: string) {
     return ["DELIVERED", "READ", "PROCESSED", "APPROVED", "ACTIVE"].includes(
@@ -556,15 +650,59 @@ export class AppComponent {
   }
   get fields() {
     const fields = FIELDS[this.page()] || [];
+    if (this.page() === "templates") {
+      const email = ["subject", "html"];
+      const whatsapp = [
+        "imageId",
+        "imageDisabled",
+        "headerType",
+        "providerTemplateName",
+        "providerTemplateId",
+      ];
+      return fields
+        .filter((f) =>
+          this.templateIsEmail
+            ? !whatsapp.includes(f.key)
+            : !email.includes(f.key),
+        )
+        .map((f) =>
+          f.key === "body" && this.templateIsEmail
+            ? {
+                ...f,
+                label: "Corpo do e-mail em texto",
+                required: true,
+                maxLength: 20000,
+              }
+            : f,
+        );
+    }
     if (this.page() !== "channels") return fields;
     const evolution = ["instanceName", "apiKey", "webhookToken"];
+    const email = [
+      "smtpHost",
+      "smtpPort",
+      "smtpSecurity",
+      "fromEmail",
+      "fromName",
+      "replyTo",
+      "username",
+      "password",
+    ];
     return fields.filter(
       (f) =>
         f.key === "provider" ||
-        (this.form.spec.provider === "WHATSAPP_EVOLUTION"
-          ? evolution.includes(f.key)
-          : !evolution.includes(f.key)),
+        (this.form.spec.provider === "EMAIL_SMTP"
+          ? email.includes(f.key)
+          : this.form.spec.provider === "WHATSAPP_EVOLUTION"
+            ? evolution.includes(f.key)
+            : !evolution.includes(f.key) && !email.includes(f.key)),
     );
+  }
+  channelChanged() {
+    if (this.form.spec.provider === "EMAIL_SMTP") {
+      this.form.spec.smtpPort ||= 465;
+      this.form.spec.smtpSecurity ||= "TLS";
+    }
   }
   choices(field: Field) {
     let ref = field.ref;
@@ -579,6 +717,7 @@ export class AppComponent {
     return list;
   }
   openEditor(resource?: Resource) {
+    this.channelProviderAtOpen = resource?.spec["provider"] || "";
     this.editId = resource?.id || "";
     this.form = resource
       ? structuredClone(resource)
@@ -639,6 +778,18 @@ export class AppComponent {
       body.spec = Object.fromEntries(
         Object.entries(body.spec).filter(([k]) => allowed.has(k)),
       );
+      if (
+        this.page() === "contacts" &&
+        !body.spec.phone?.trim() &&
+        !body.spec.email?.trim()
+      )
+        throw new Error("Preencha um telefone ou e-mail para o contato.");
+      if (
+        this.page() === "templates" &&
+        this.templateIsEmail &&
+        (!body.spec.subject?.trim() || !body.spec.body?.trim())
+      )
+        throw new Error("Preencha assunto e corpo em texto do e-mail.");
       if (this.page() === "templates")
         body.spec.variables = String(body.spec.variables || "")
           .split(",")
@@ -648,6 +799,26 @@ export class AppComponent {
         if (body.spec[key])
           body.spec[key] = new Date(body.spec[key]).toISOString();
       if (this.page() === "channels") {
+        if (body.spec.provider === "EMAIL_SMTP") {
+          const port = Number(body.spec.smtpPort);
+          if (!Number.isInteger(port) || port < 1 || port > 65535)
+            throw new Error("Informe uma porta SMTP válida.");
+          if (
+            !body.spec.smtpHost?.trim() ||
+            !body.spec.fromEmail?.trim() ||
+            !["TLS", "STARTTLS"].includes(body.spec.smtpSecurity)
+          )
+            throw new Error("Preencha servidor, remetente e segurança SMTP.");
+          if (
+            (!this.form.spec.credentialsConfigured ||
+              this.channelProviderAtOpen !== "EMAIL_SMTP" ||
+              body.spec.username ||
+              body.spec.password) &&
+            (!body.spec.username?.trim() || !body.spec.password)
+          )
+            throw new Error("Informe usuário e senha SMTP.");
+          body.spec.smtpPort = port;
+        }
         const credentials: Record<string, string> = {};
         for (const key of [
           "accessToken",
@@ -655,6 +826,8 @@ export class AppComponent {
           "verifyToken",
           "apiKey",
           "webhookToken",
+          "username",
+          "password",
         ]) {
           if (body.spec[key]) credentials[key] = body.spec[key];
           delete body.spec[key];
@@ -724,6 +897,8 @@ export class AppComponent {
     text: "",
     variables: {} as Record<string, string>,
   };
+  manualSubject = "";
+  manualHtml = "";
   manualImageId = "";
   manualMode = "text";
   manualPreview = signal<any>(null);
@@ -741,6 +916,9 @@ export class AppComponent {
     return this.resources()["channels"]?.find(
       (c) => c.id === this.manualForm.channelConnectionId,
     );
+  }
+  get manualIsEmail() {
+    return this.manualChannel?.spec["provider"] === "EMAIL_SMTP";
   }
   get manualContact() {
     return this.resources()["contacts"]?.find(
@@ -807,7 +985,15 @@ export class AppComponent {
         templateId: this.manualUsesTemplate
           ? this.manualForm.templateId || null
           : null,
-        ...(this.manualImageId ? { imageId: this.manualImageId } : {}),
+        ...(!this.manualIsEmail && this.manualImageId
+          ? { imageId: this.manualImageId }
+          : {}),
+        ...(this.manualIsEmail && !this.manualUsesTemplate
+          ? {
+              subject: this.manualSubject,
+              ...(this.manualHtml.trim() ? { html: this.manualHtml } : {}),
+            }
+          : {}),
         text: this.manualUsesTemplate ? null : this.manualForm.text,
         variables: this.manualUsesTemplate ? this.manualForm.variables : {},
       };
@@ -863,6 +1049,8 @@ export class AppComponent {
     this.manualPreview.set(null);
     this.manualImageId = "";
     this.manualForm.text = "";
+    this.manualSubject = "";
+    this.manualHtml = "";
     this.manualForm.variables = {};
     this.manualRequestId = crypto.randomUUID();
   }
@@ -1161,7 +1349,7 @@ export class AppComponent {
     this.saving.set(true);
     try {
       await this.api.post("admin/suppressions", this.suppressionForm);
-      this.suppressionForm = { address: "", reason: "" };
+      this.suppressionForm = { channel: "WHATSAPP", address: "", reason: "" };
       this.notify("Destinatário adicionado à lista de supressão.");
       await this.reload();
     } catch (e) {

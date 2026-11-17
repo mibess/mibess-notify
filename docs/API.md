@@ -75,3 +75,34 @@ POST `/admin/events/{id}/reprocess`, ADMIN/OPERATOR e CSRF, aceita apenas NO_MAT
 - Enviar o teste de verdade exige escolher um contato, revisar `/admin/notifications/manual/preview` e confirmar `/admin/notifications/manual` com requestId e previewHash. O fluxo é o mesmo do envio manual, com um único destinatário.
 - GET `/admin/notifications/manual/requests/{requestId}`, ADMIN/OPERATOR: recupera o envio do próprio autor no workspace, sem repetir a confirmação depois de uma resposta perdida.
 - GET `/admin/applications/{id}/health`: checks com code/status/message/resourceKind/resourceId, último evento e contagem NO_MATCH de 24 h. Verifica chave, tipos sem regra, grupos/contatos, templates e canal. Evolution consulta somente connectionState: conexão fechada é erro; aberta não comprova entrega e permanece UNKNOWN até validação operacional. Meta também não é declarado conectado apenas por ter credenciais; FAKE_READY é usado exclusivamente em homologação/testes.
+
+
+## E-mail transacional e destinatário por canal
+
+O mesmo evento pode gerar avisos internos, WhatsApp do comprador e e-mail, por regras independentes. `recipient.email` aceita um único endereço; `recipient.phone` continua E.164. Endereço ausente/inválido impede somente a resolução daquele canal. Não há credenciais, remetente ou template no evento. Um `whatsappOptIn: false` explícito impede o WhatsApp ao comprador mesmo quando já existe contato com opt-in; a omissão mantém a resolução legada pelo contato. E-mail transacional não depende de opt-in WhatsApp. Contato desativado e suppression continuam prevalecendo.
+
+Canal `EMAIL_SMTP`, cadastro administrativo:
+
+```json
+{
+  "code": "ARTGIAN_EMAIL", "name": "Artgian — E-mail", "enabled": true,
+  "spec": {
+    "provider": "EMAIL_SMTP", "smtpHost": "smtp.zoho.com", "smtpPort": 465,
+    "smtpSecurity": "TLS", "fromEmail": "contato@artgian.com.br", "fromName": "Artgian",
+    "replyTo": "contato@artgian.com.br",
+    "credentials": {"username": "contato@artgian.com.br", "password": "SEGREDO_EXTERNO"}
+  }
+}
+```
+
+`smtpSecurity` aceita `TLS` (TLS implícito) ou `STARTTLS` obrigatório, sem fallback em texto aberto; certificados e hostname são verificados. Credenciais permanecem criptografadas e são omitidas da resposta. Ao atualizar credenciais envie username/password juntos; omiti-las preserva o segredo existente. Host/porta são configuração exclusiva de ADMIN. Timeouts são limitados; não se armazena resposta SMTP bruta nos erros.
+
+Templates SMTP mantêm `channelConnectionId`, `language`, `category`, `status`, `variables` e `body` (texto, até 20.000 caracteres); exigem `subject` (até 200, sem quebras de linha) e aceitam `html` (até 50.000). `providerTemplateName` não é obrigatório; `APPROVED` significa revisão interna. Variáveis em HTML são escapadas; texto e assunto usam os valores originais, com proteção de cabeçalhos. Imagens WhatsApp não são aplicadas ao e-mail. O cadastro completo de template aceita até 80.000 caracteres.
+
+`CONTACT`, `CONTACT_GROUP` e `EVENT_RECIPIENT` usam o e-mail quando o canal é SMTP, com lookup por e-mail no workspace. Contatos podem ter apenas e-mail; telefone em branco é removido. Suppression recebe `{address,reason,channel:"EMAIL"}`; omitir `channel` mantém o comportamento legado `WHATSAPP`. Bloqueios são independentes por canal e são revalidados no worker.
+
+Envio manual reutiliza os endpoints de preview/confirmação. Para SMTP, `contactId` resolve o e-mail cadastrado. Mensagem livre exige `text` e `subject`, com `html` opcional. Com `templateId`, informe somente `variables`, sem texto/assunto/HTML livres. Preview acrescenta `subject`, `html` e `fromAddress`; conteúdo e remetente participam da fotografia e da confirmação. O detalhe da notificação retorna esses mesmos campos. Testar regra retorna `renderedSubject`, `renderedHtml` e `channel` além dos campos anteriores.
+
+SMTP aceito gera `SENT` com Message-ID. Não se declara `DELIVERED` ou `READ` sem confirmação de entrega. Respostas explícitas transitórias permitem retry; resultado incerto depois do envio é `DELIVERY_UNKNOWN` e exige reconciliação. A outbox, fila, worker, timeline e unicidade `(event_id,rule_id,recipient_address)` continuam compartilhados; repetir o evento não repete os canais já criados. `V6__email_contact_lookup.sql` adiciona apenas índice de consulta por e-mail, sem alterar dados históricos.
+
+Testes usam servidor SMTP local TLS com certificado exclusivamente de teste, sem contas ou envio real; PostgreSQL/RabbitMQ de integração são isolados via Testcontainers.

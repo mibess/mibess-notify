@@ -41,12 +41,17 @@ public class ConsentService {
   }
 
   public boolean suppressed(UUID workspace, String address) {
+    return suppressed(workspace, address, "WHATSAPP");
+  }
+
+  public boolean suppressed(UUID workspace, String address, String channel) {
     return db
       .sql(
-        "SELECT EXISTS(SELECT 1 FROM suppressions WHERE workspace_id=:w AND address=:a AND channel='WHATSAPP')"
+        "SELECT EXISTS(SELECT 1 FROM suppressions WHERE workspace_id=:w AND address=:a AND channel=:channel)"
       )
       .param("w", workspace)
       .param("a", address)
+      .param("channel", channel)
       .query(Boolean.class)
       .single();
   }

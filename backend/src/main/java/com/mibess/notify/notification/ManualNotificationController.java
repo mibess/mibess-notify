@@ -2,10 +2,12 @@ package com.mibess.notify.notification;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mibess.notify.audit.AuditLog;
+import com.mibess.notify.channel.DeliveryAddress;
 import com.mibess.notify.channel.ProviderRegistry;
 import com.mibess.notify.contact.ConsentService;
 import com.mibess.notify.shared.*;
 import com.mibess.notify.shared.ResourceStore.*;
+import com.mibess.notify.template.TemplateRenderer;
 import com.mibess.notify.workspace.WorkspaceAccess;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -30,7 +32,9 @@ public class ManualNotificationController {
     @NotNull UUID channelConnectionId,
     UUID templateId,
     UUID imageId,
-    @Size(max = 4096) String text,
+    @Size(max = 20000) String text,
+    @Size(max = 200) String subject,
+    @Size(max = 50000) String html,
     @Size(max = 50)
     Map<@Size(max = 150) String, @NotBlank @Size(max = 4096) String> variables,
     @Size(max = 64) String previewHash
@@ -44,6 +48,9 @@ public class ManualNotificationController {
     String provider,
     String text,
     String templateName,
+    String subject,
+    String html,
+    String fromAddress,
     UUID imageId
   ) {}
 
@@ -146,7 +153,7 @@ public class ManualNotificationController {
         INSERT INTO notifications(id,workspace_id,channel_connection_id,template_id,contact_id,
           channel,recipient_type,recipient_name,recipient_address,priority,status,command,
           source,manual_request_id,manual_request_hash,created_by)
-        VALUES(:id,:w,:channel,:template,:contact,'WHATSAPP','CONTACT',:name,:phone,'NORMAL','PENDING',CAST(:cmd AS jsonb),
+        VALUES(:id,:w,:channel,:template,:contact,:kind,'CONTACT',:name,:phone,'NORMAL','PENDING',CAST(:cmd AS jsonb),
           'MANUAL',:request,:hash,:actor)
         ON CONFLICT(workspace_id,manual_request_id) WHERE manual_request_id IS NOT NULL DO NOTHING
         """
@@ -154,6 +161,7 @@ public class ManualNotificationController {
       .param("id", id)
       .param("w", workspace)
       .param("channel", input.channelConnectionId())
+      .param("kind", DeliveryAddress.channel(prepared.channel()))
       .param("template", input.templateId())
       .param("contact", input.contactId())
       .param("name", prepared.contact().name())
@@ -215,6 +223,14 @@ public class ManualNotificationController {
       input.imageId().toString()
     );
     body.put("text", input.text() == null ? "" : input.text());
+    if (input.subject() != null && !input.subject().isBlank()) body.put(
+      "subject",
+      input.subject()
+    );
+    if (input.html() != null && !input.html().isBlank()) body.put(
+      "html",
+      input.html()
+    );
     body.set(
       "variables",
       json.tree(
@@ -231,17 +247,29 @@ public class ManualNotificationController {
       workspace,
       input.channelConnectionId()
     );
-    String phone = ConsentService.phone(contact.spec().path("phone").asText());
+    String deliveryChannel = DeliveryAddress.channel(channel);
+    boolean email = deliveryChannel.equals("EMAIL");
+    String phone = DeliveryAddress.address(contact.spec(), deliveryChannel);
+    if (email && input.imageId() != null) throw new IllegalArgumentException(
+      "E-mail usa HTML; imagem WhatsApp não se aplica."
+    );
+    if (
+      !email &&
+      ((input.subject() != null && !input.subject().isBlank()) ||
+        (input.html() != null && !input.html().isBlank()))
+    ) throw new IllegalArgumentException(
+      "Assunto e HTML são exclusivos de e-mail."
+    );
     if (!contact.enabled()) throw new IllegalArgumentException(
       "Ative o contato antes de enviar."
     );
     if (
-      !ConsentService.validOptIn(contact.spec())
+      !DeliveryAddress.permitted(contact.spec(), deliveryChannel)
     ) throw new IllegalArgumentException(
       "O contato precisa de consentimento válido, com data e origem, para receber WhatsApp."
     );
     if (
-      consent.suppressed(workspace, phone)
+      consent.suppressed(workspace, phone, deliveryChannel)
     ) throw new IllegalArgumentException(
       "Este contato está na lista de bloqueio de envios."
     );
@@ -250,9 +278,12 @@ public class ManualNotificationController {
     );
     String provider = channel.spec().path("provider").asText();
     if (
-      !Set.of("WHATSAPP_EVOLUTION", "WHATSAPP_META", "FAKE").contains(
-        provider
-      ) ||
+      !Set.of(
+        "WHATSAPP_EVOLUTION",
+        "WHATSAPP_META",
+        "EMAIL_SMTP",
+        "FAKE"
+      ).contains(provider) ||
       !providers.get(provider).validateConfiguration(channel)
     ) throw new IllegalArgumentException(
       "O remetente ainda não está configurado para envio."
@@ -263,6 +294,8 @@ public class ManualNotificationController {
     command.set("consent", contact.spec());
     command.put("correlationId", "manual-" + input.requestId());
     String text,
+      subject = "",
+      html = "",
       templateName = "";
     var variables =
       input.variables() == null ? Map.<String, String>of() : input.variables();
@@ -274,9 +307,15 @@ public class ManualNotificationController {
         "Mensagem livre não aceita variáveis separadas."
       );
       text = input.text() == null ? "" : input.text();
+      if (email) {
+        subject = DeliveryAddress.header(input.subject(), "subject", 200);
+        html = input.html() == null ? "" : input.html();
+      }
     } else {
       if (
-        input.text() != null && !input.text().isBlank()
+        (input.text() != null && !input.text().isBlank()) ||
+        (input.subject() != null && !input.subject().isBlank()) ||
+        (input.html() != null && !input.html().isBlank())
       ) throw new IllegalArgumentException(
         "Use o corpo do template ou uma mensagem livre, não ambos."
       );
@@ -317,18 +356,44 @@ public class ManualNotificationController {
       text = VARIABLE.matcher(spec.path("body").asText()).replaceAll(match ->
         Matcher.quoteReplacement(variables.get(match.group(1)))
       );
+      if (email) {
+        subject = DeliveryAddress.header(
+          TemplateRenderer.renderValues(
+            spec.path("subject").asText(),
+            variables,
+            false
+          ),
+          "subject",
+          200
+        );
+        html = TemplateRenderer.renderValues(
+          spec.path("html").asText(),
+          variables,
+          true
+        );
+      }
       templateName = spec.path("providerTemplateName").asText();
       command.put("templateName", templateName);
       command.put("language", spec.path("language").asText());
       command.put("templateFingerprint", Crypto.hash(json.write(spec)));
     }
     if (
-      text.isBlank() || text.length() > 4096
+      text.isBlank() ||
+      text.length() > (email ? 20000 : 4096) ||
+      html.length() > 50000
     ) throw new IllegalArgumentException(
-      "Escreva uma mensagem de 1 a 4096 caracteres."
+      email
+        ? "Escreva texto de até 20000 caracteres e HTML de até 50000."
+        : "Escreva uma mensagem de 1 a 4096 caracteres."
     );
     command.put("text", text);
-    images.attach(
+    if (email) {
+      command.put("subject", subject);
+      command.put("html", html);
+      command.put("fromAddress", channel.spec().path("fromEmail").asText());
+      command.put("fromName", channel.spec().path("fromName").asText());
+      command.put("replyTo", channel.spec().path("replyTo").asText());
+    } else images.attach(
       command,
       workspace,
       input.templateId() == null
@@ -359,6 +424,9 @@ public class ManualNotificationController {
         provider,
         text,
         templateName,
+        subject,
+        html,
+        email ? channel.spec().path("fromEmail").asText() : "",
         command.hasNonNull("imageId")
           ? UUID.fromString(command.path("imageId").asText())
           : null

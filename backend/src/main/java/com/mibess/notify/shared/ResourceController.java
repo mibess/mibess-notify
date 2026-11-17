@@ -3,7 +3,9 @@ package com.mibess.notify.shared;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import com.mibess.notify.audit.AuditLog;
+import com.mibess.notify.channel.DeliveryAddress;
 import com.mibess.notify.contact.ConsentService;
+import com.mibess.notify.email.EmailSmtpProvider;
 import com.mibess.notify.routing.Conditions;
 import com.mibess.notify.shared.ResourceStore.*;
 import com.mibess.notify.workspace.WorkspaceAccess;
@@ -92,7 +94,9 @@ public class ResourceController {
     UUID w = access.id();
     Resource old = existing ? store.get(kind, w, id) : null;
     if (
-      !input.spec().isObject() || json.write(input.spec()).length() > 20000
+      !input.spec().isObject() ||
+      json.write(input.spec()).length() >
+        (kind == Kind.TEMPLATES ? 80000 : 20000)
     ) throw new IllegalArgumentException("Configuração inválida");
     ObjectNode spec = input.spec().deepCopy();
     spec.remove(List.of("credentialsConfigured", "encryptedCredentials"));
@@ -117,6 +121,12 @@ public class ResourceController {
         "graphApiVersion",
         "coexistence",
         "instanceName",
+        "smtpHost",
+        "smtpPort",
+        "smtpSecurity",
+        "fromEmail",
+        "fromName",
+        "replyTo",
         "credentials"
       );
       case TEMPLATES -> Set.of(
@@ -127,6 +137,8 @@ public class ResourceController {
         "category",
         "status",
         "body",
+        "subject",
+        "html",
         "imageId",
         "imageDisabled",
         "headerType",
@@ -157,7 +169,20 @@ public class ResourceController {
         images.validateReference(w, spec);
       }
       case CONTACTS -> {
-        spec.put("phone", ConsentService.phone(spec.path("phone").asText()));
+        if (!spec.path("phone").asText().isBlank()) spec.put(
+          "phone",
+          ConsentService.phone(spec.path("phone").asText())
+        );
+        else spec.remove("phone");
+        if (!spec.path("email").asText().isBlank()) spec.put(
+          "email",
+          DeliveryAddress.email(spec.path("email").asText())
+        );
+        else spec.remove("email");
+        if (
+          spec.path("phone").asText().isBlank() &&
+          spec.path("email").asText().isBlank()
+        ) throw new IllegalArgumentException("Informe telefone ou e-mail.");
         oneOf(spec, "type", Set.of("INTERNAL", "CUSTOMER", "OTHER"));
         if (
           spec.path("whatsappOptIn").asBoolean() &&
@@ -178,8 +203,13 @@ public class ResourceController {
           spec,
           "provider",
           fake
-            ? Set.of("WHATSAPP_META", "WHATSAPP_EVOLUTION", "FAKE")
-            : Set.of("WHATSAPP_META", "WHATSAPP_EVOLUTION")
+            ? Set.of(
+                "WHATSAPP_META",
+                "WHATSAPP_EVOLUTION",
+                "EMAIL_SMTP",
+                "FAKE"
+              )
+            : Set.of("WHATSAPP_META", "WHATSAPP_EVOLUTION", "EMAIL_SMTP")
         );
         if (
           spec.path("provider").asText().equals("WHATSAPP_META") &&
@@ -192,18 +222,28 @@ public class ResourceController {
         ) throw new IllegalArgumentException(
           "Nome da instância Evolution inválido"
         );
+        if (spec.path("provider").asText().equals("EMAIL_SMTP")) {
+          EmailSmtpProvider.validateSpec(spec);
+          spec.put(
+            "fromEmail",
+            DeliveryAddress.email(spec.path("fromEmail").asText())
+          );
+          if (!spec.path("replyTo").asText().isBlank()) spec.put(
+            "replyTo",
+            DeliveryAddress.email(spec.path("replyTo").asText())
+          );
+        }
         JsonNode credentials = spec.remove("credentials");
         if (
           credentials != null &&
           credentials.isObject() &&
           !credentials.isEmpty()
         ) {
-          for (String key : spec
-            .path("provider")
-            .asText()
-            .equals("WHATSAPP_EVOLUTION")
-            ? List.of("apiKey", "webhookToken")
-            : List.of("accessToken", "appSecret", "verifyToken"))
+          for (String key : spec.path("provider").asText().equals("EMAIL_SMTP")
+            ? List.of("username", "password")
+            : spec.path("provider").asText().equals("WHATSAPP_EVOLUTION")
+              ? List.of("apiKey", "webhookToken")
+              : List.of("accessToken", "appSecret", "verifyToken"))
             if (
               credentials.path(key).asText().isBlank()
             ) throw new IllegalArgumentException(
@@ -239,6 +279,14 @@ public class ResourceController {
           w,
           spec.path("channelConnectionId").asText()
         );
+        boolean email = DeliveryAddress.channel(channel).equals("EMAIL");
+        if (
+          email &&
+          (!spec.path("imageId").asText().isBlank() ||
+            spec.path("headerType").asText().equals("IMAGE"))
+        ) throw new IllegalArgumentException(
+          "E-mail usa HTML; imagem WhatsApp não se aplica."
+        );
         images.validateReference(w, spec);
         if (spec.has("headerType")) oneOf(
           spec,
@@ -258,7 +306,16 @@ public class ResourceController {
         ) throw new IllegalArgumentException(
           "O cabeçalho IMAGE não permite desativar a imagem."
         );
-        required(spec, "providerTemplateName");
+        if (email) {
+          DeliveryAddress.header(spec.path("subject").asText(), "subject", 200);
+          required(spec, "body");
+          if (
+            spec.path("body").asText().length() > 20000 ||
+            spec.path("html").asText().length() > 50000
+          ) throw new IllegalArgumentException(
+            "Template de e-mail muito longo."
+          );
+        } else required(spec, "providerTemplateName");
         required(spec, "language");
         oneOf(
           spec,
@@ -403,7 +460,8 @@ public class ResourceController {
 
   public record Suppression(
     @NotBlank String address,
-    @NotBlank @Size(max = 200) String reason
+    @NotBlank @Size(max = 200) String reason,
+    String channel
   ) {}
 
   @PostMapping("/suppressions")
@@ -411,12 +469,20 @@ public class ResourceController {
   @Transactional
   public void suppress(@Valid @RequestBody Suppression input) {
     var id = UUID.randomUUID();
+    String channel = input.channel() == null ? "WHATSAPP" : input.channel();
+    if (
+      !Set.of("WHATSAPP", "EMAIL").contains(channel)
+    ) throw new IllegalArgumentException("Canal inválido.");
+    String address = channel.equals("EMAIL")
+      ? DeliveryAddress.email(input.address())
+      : ConsentService.phone(input.address());
     db.sql(
-      "INSERT INTO suppressions(id,workspace_id,address,reason) VALUES(:id,:w,:a,:r) ON CONFLICT DO NOTHING"
+      "INSERT INTO suppressions(id,workspace_id,address,reason,channel) VALUES(:id,:w,:a,:r,:channel) ON CONFLICT DO NOTHING"
     )
       .param("id", id)
       .param("w", access.id())
-      .param("a", ConsentService.phone(input.address()))
+      .param("a", address)
+      .param("channel", channel)
       .param("r", input.reason())
       .update();
     audit.record(access.id(), access.actor(), "RECIPIENT_SUPPRESSED", id);
